@@ -331,51 +331,51 @@ export default function DashboardPage() {
                         className="cyber-row cursor-pointer"
                         onClick={() => setSelectedLead(lead)}
                       >
-                        <td className="text-gray-500 text-[11px] font-mono">
+                        <td className="text-gray-500 text-[10px] font-mono">
                           {format(parseISO(lead.inbox_entered_at), 'MM/dd HH:mm')}
                         </td>
                         <td>
-                          <span className={`inline-block px-2 py-0.5 text-[9px] font-medium border rounded ${typeColorClass}`}>
+                          <span className={`inline-block px-1.5 py-0.5 text-[8px] font-medium border rounded ${typeColorClass}`}>
                             {signalLabel}
                           </span>
                         </td>
                         <td>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <div>
-                              <div className="text-gray-800 text-[12px] truncate max-w-[120px]">
+                              <div className="text-gray-800 text-[11px] truncate max-w-[110px] leading-tight">
                                 {lead.first_name || lead.last_name
                                   ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                   : lead.email?.split('@')[0]}
                               </div>
-                              <div className="text-gray-500 text-[10px] truncate max-w-[120px]">
+                              <div className="text-gray-400 text-[9px] truncate max-w-[110px] leading-tight">
                                 {lead.title || lead.detected_persona || '-'}
                               </div>
                             </div>
                             {lead.has_research && (
-                              <Brain className="w-3.5 h-3.5 text-neon-purple shrink-0" />
+                              <Brain className="w-3 h-3 text-neon-purple shrink-0" />
                             )}
                           </div>
                         </td>
                         <td>
-                          <div className="text-gray-700 text-[12px] truncate max-w-[100px]">
-                            {isPersonal ? <span className="text-gray-400 italic text-[11px]">personal</span> : (lead.company_name || '-')}
+                          <div className="text-gray-700 text-[11px] truncate max-w-[90px]">
+                            {isPersonal ? <span className="text-gray-400 italic text-[10px]">personal</span> : (lead.company_name || '-')}
                           </div>
                         </td>
                         <td>
-                          <div className="text-gray-700 text-[12px]" title={lead.content_name}>
+                          <div className="text-gray-600 text-[11px]" title={lead.content_name}>
                             {lead.content_name || '-'}
                           </div>
                         </td>
                         <td className="text-center">
-                          <span className="font-cyber text-sm text-gray-800 score-display">{lead.total_score}</span>
+                          <span className="font-cyber text-[12px] text-gray-800">{lead.total_score}</span>
                         </td>
                         <td className="text-center">
-                          <span className={`inline-block px-2.5 py-1 text-[10px] font-cyber font-bold rounded ${tierClass}`}>
+                          <span className={`inline-block px-1.5 py-0.5 text-[9px] font-cyber font-bold rounded ${tierClass}`}>
                             {lead.signal_tier}
                           </span>
                         </td>
                         <td className="text-center">
-                          <span className={`text-[10px] font-bold uppercase ${statusClass}`}>
+                          <span className={`text-[9px] font-semibold uppercase ${statusClass}`}>
                             {lead.action_status}
                           </span>
                         </td>

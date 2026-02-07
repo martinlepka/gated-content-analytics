@@ -133,9 +133,9 @@ body::after {
   font-family: 'Orbitron', sans-serif;
   font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: hsl(220 10% 45%);
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid hsl(210 20% 90%);
 }
 
@@ -149,8 +149,9 @@ body::after {
 }
 
 .cyber-row td {
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 6px 10px;
+  font-size: 11px;
+  vertical-align: middle;
 }
 
 /* Tier badges */

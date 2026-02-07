@@ -272,45 +272,45 @@ export default function LeadsPage() {
                       onClick={() => setSelectedLead(lead)}
                     >
                       <td className="text-center">
-                        <span className={`inline-block px-2 py-0.5 text-[9px] font-cyber font-bold ${getTierClass(lead.signal_tier)}`}>
+                        <span className={`inline-block px-1.5 py-0.5 text-[9px] font-cyber font-bold ${getTierClass(lead.signal_tier)}`}>
                           {lead.signal_tier}
                         </span>
                       </td>
                       <td className="text-center">
-                        <span className="font-cyber text-sm text-neon-cyan">{lead.total_score}</span>
+                        <span className="font-cyber text-[12px] text-neon-cyan">{lead.total_score}</span>
                       </td>
-                      <td className="text-gray-500 font-mono text-[11px]">
+                      <td className="text-gray-500 font-mono text-[10px]">
                         {format(parseISO(lead.inbox_entered_at), 'MM/dd')}
                       </td>
                       <td>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <div className="min-w-0">
-                            <div className="text-[12px] text-gray-800 truncate max-w-[140px]">
+                            <div className="text-[11px] text-gray-800 truncate max-w-[130px] leading-tight">
                               {lead.first_name || lead.last_name
                                 ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                 : lead.email?.split('@')[0]}
                             </div>
-                            <div className="text-[10px] text-gray-500 truncate max-w-[140px]">
+                            <div className="text-[9px] text-gray-400 truncate max-w-[130px] leading-tight">
                               {lead.email}
                             </div>
                           </div>
                           {lead.has_research && (
                             <span title="AI Researched">
-                              <Brain className="h-3.5 w-3.5 text-neon-purple shrink-0" />
+                              <Brain className="h-3 w-3 text-neon-purple shrink-0" />
                             </span>
                           )}
                         </div>
                       </td>
                       <td>
                         {isPersonalEmail ? (
-                          <span className="text-[11px] text-gray-400 italic">personal</span>
+                          <span className="text-[10px] text-gray-400 italic">personal</span>
                         ) : (
                           <div className="min-w-0">
-                            <div className="text-[12px] text-gray-700 truncate max-w-[120px]">
+                            <div className="text-[11px] text-gray-700 truncate max-w-[110px] leading-tight">
                               {lead.company_name || lead.company_domain || '-'}
                             </div>
                             {lead.detected_persona && (
-                              <div className="text-[10px] text-neon-purple truncate max-w-[120px]">
+                              <div className="text-[9px] text-neon-purple truncate max-w-[110px] leading-tight">
                                 {lead.detected_persona}
                               </div>
                             )}
@@ -318,17 +318,17 @@ export default function LeadsPage() {
                         )}
                       </td>
                       <td>
-                        <span className={`inline-block px-2 py-0.5 text-[9px] font-medium border rounded ${typeColorClass}`}>
+                        <span className={`inline-block px-1.5 py-0.5 text-[8px] font-medium border rounded ${typeColorClass}`}>
                           {signalLabel}
                         </span>
                       </td>
                       <td>
-                        <div className="text-[12px] text-gray-700" title={lead.content_name || ''}>
+                        <div className="text-[11px] text-gray-600" title={lead.content_name || ''}>
                           {lead.content_name || '-'}
                         </div>
                       </td>
                       <td className="text-center">
-                        <span className={`text-[9px] font-bold ${getStatusClass(lead.action_status)}`}>
+                        <span className={`text-[9px] font-semibold ${getStatusClass(lead.action_status)}`}>
                           {lead.action_status.toUpperCase()}
                         </span>
                       </td>
