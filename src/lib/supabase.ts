@@ -28,7 +28,38 @@ export async function fetchGatedContentAPI(action: string, params: Record<string
   return response.json()
 }
 
+// Signal type labels for display
+export const SIGNAL_TYPE_LABELS: Record<string, string> = {
+  'webflow_content_download': 'Gated Content',
+  'webflow_newsletter': 'Newsletter',
+  'webflow_popup': 'Popup',
+  'webflow_demo_request': 'Demo Request',
+  'webflow_contact': 'Contact Form',
+  'webflow_webinar_reg': 'Webinar',
+  'webflow_event_reg': 'Event',
+  'webflow_form': 'Other Form',
+}
+
+// All available signal types
+export const ALL_SIGNAL_TYPES = [
+  'webflow_content_download',
+  'webflow_newsletter',
+  'webflow_popup',
+  'webflow_demo_request',
+  'webflow_contact',
+  'webflow_webinar_reg',
+  'webflow_event_reg',
+  'webflow_form',
+]
+
 // Types for API responses
+export interface SignalTypeSummary {
+  signal_type: string
+  label: string
+  count: number
+  pct: number
+}
+
 export interface OverviewData {
   total_downloads: number
   high_quality_count: number
@@ -38,12 +69,16 @@ export interface OverviewData {
   avg_score: number
   by_tier: { P0: number; P1: number; P2: number; P3: number }
   by_status: { new: number; working: number; done: number; rejected: number }
+  by_signal_type: SignalTypeSummary[]
   by_content: ContentSummary[]
   by_persona: PersonaSummary[]
+  available_signal_types: Array<{ value: string; label: string }>
 }
 
 export interface ContentSummary {
   content_name: string
+  signal_type?: string
+  signal_type_label?: string
   downloads: number
   high_quality: number
   quality_pct: number
@@ -80,6 +115,8 @@ export interface Lead {
   inbox_entered_at: string
   detected_persona: string
   content_name: string
+  trigger_signal_type?: string
+  signal_type_label?: string
   utm_source: string | null
   utm_campaign: string | null
   has_research: boolean

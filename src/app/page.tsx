@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { fetchGatedContentAPI, OverviewData, TrendData, Lead } from '@/lib/supabase'
+import { fetchGatedContentAPI, OverviewData, TrendData, Lead, SIGNAL_TYPE_LABELS } from '@/lib/supabase'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
@@ -34,6 +34,7 @@ export default function DashboardPage() {
   // Filters
   const [timeFilter, setTimeFilter] = useState('all')
   const [tierFilter, setTierFilter] = useState<string>('')
+  const [signalTypeFilter, setSignalTypeFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string>('')
   const [campaignFilter, setCampaignFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,10 +43,16 @@ export default function DashboardPage() {
     async function fetchData() {
       try {
         setLoading(true)
+        // Build params with signal type filter
+        const params: Record<string, string> = {}
+        if (signalTypeFilter) {
+          params.signal_type = signalTypeFilter
+        }
+
         const [overviewData, trendData, leadsData] = await Promise.all([
-          fetchGatedContentAPI('overview'),
-          fetchGatedContentAPI('trend', { days: '30' }),
-          fetchGatedContentAPI('leads', { limit: '200' }),
+          fetchGatedContentAPI('overview', params),
+          fetchGatedContentAPI('trend', { days: '30', ...params }),
+          fetchGatedContentAPI('leads', { limit: '500', ...params }),
         ])
         setOverview(overviewData)
         setTrend(trendData.trend || [])
@@ -57,7 +64,7 @@ export default function DashboardPage() {
       }
     }
     fetchData()
-  }, [])
+  }, [signalTypeFilter])
 
   // Get unique sources and campaigns for filters
   const { sources, campaigns } = useMemo(() => {
@@ -281,6 +288,25 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* Signal Type Filter */}
+            <div className="relative">
+              <select
+                className="appearance-none bg-muted border border-border rounded px-3 py-1.5 pr-8 text-xs font-medium text-foreground focus:outline-none focus:border-neon-cyan cursor-pointer"
+                value={signalTypeFilter}
+                onChange={(e) => setSignalTypeFilter(e.target.value)}
+              >
+                <option value="">All Types</option>
+                <option value="webflow_content_download">Gated Content</option>
+                <option value="webflow_demo_request">Demo Request</option>
+                <option value="webflow_contact">Contact Form</option>
+                <option value="webflow_newsletter">Newsletter</option>
+                <option value="webflow_popup">Popup</option>
+                <option value="webflow_webinar_reg">Webinar</option>
+                <option value="webflow_event_reg">Event</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+            </div>
+
             {/* Tier Filter */}
             <div className="relative">
               <select
@@ -344,6 +370,7 @@ export default function DashboardPage() {
               <thead>
                 <tr className="border-b border-border bg-muted/50">
                   <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Type</th>
                   <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Contact</th>
                   <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Company</th>
                   <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Content</th>
@@ -355,7 +382,7 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-border">
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-12 text-center text-muted-foreground font-mono text-sm">
+                    <td colSpan={8} className="px-3 py-12 text-center text-muted-foreground font-mono text-sm">
                       No leads match your filters
                     </td>
                   </tr>
@@ -363,6 +390,7 @@ export default function DashboardPage() {
                   filteredLeads.map((lead) => {
                     const tierConfig = TIER_CONFIG[lead.signal_tier as keyof typeof TIER_CONFIG] || TIER_CONFIG.P3
                     const isPersonalEmail = /gmail|yahoo|hotmail|outlook|icloud|aol|proton/i.test(lead.email || '')
+                    const signalLabel = lead.signal_type_label || SIGNAL_TYPE_LABELS[lead.trigger_signal_type || ''] || 'Unknown'
 
                     return (
                       <tr
@@ -374,14 +402,19 @@ export default function DashboardPage() {
                           {format(parseISO(lead.inbox_entered_at), 'MM/dd')}
                         </td>
                         <td className="px-3 py-2">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                            {signalLabel}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             <div className="min-w-0">
-                              <div className="text-sm font-medium text-foreground truncate max-w-[140px]">
+                              <div className="text-sm font-medium text-foreground truncate max-w-[120px]">
                                 {lead.first_name || lead.last_name
                                   ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                   : lead.email?.split('@')[0]}
                               </div>
-                              <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                              <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                                 {lead.title || lead.detected_persona || '-'}
                               </div>
                             </div>
@@ -391,7 +424,7 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="text-sm text-foreground truncate max-w-[120px]">
+                          <div className="text-sm text-foreground truncate max-w-[100px]">
                             {isPersonalEmail ? (
                               <span className="text-muted-foreground italic">Personal</span>
                             ) : (
@@ -400,7 +433,7 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="text-xs text-foreground truncate max-w-[150px]" title={lead.content_name || ''}>
+                          <div className="text-xs text-foreground truncate max-w-[120px]" title={lead.content_name || ''}>
                             {lead.content_name || '-'}
                           </div>
                         </td>
