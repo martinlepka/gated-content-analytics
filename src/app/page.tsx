@@ -441,17 +441,19 @@ export default function DashboardPage() {
                         <td>
                           <div className="flex items-center gap-1.5">
                             <div>
-                              <div className="text-gray-800 text-[11px] truncate max-w-[110px] leading-tight">
+                              <div className="text-gray-800 text-[11px] truncate max-w-[130px] leading-tight">
                                 {lead.first_name || lead.last_name
                                   ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                   : lead.email?.split('@')[0]}
                               </div>
-                              <div className="text-gray-400 text-[9px] truncate max-w-[110px] leading-tight">
-                                {lead.title || lead.detected_persona || '-'}
+                              <div className="text-gray-400 text-[9px] truncate max-w-[130px] leading-tight">
+                                {lead.email}
                               </div>
                             </div>
                             {lead.has_research && (
-                              <Brain className="w-3 h-3 text-neon-purple shrink-0" />
+                              <span title="AI Researched">
+                                <Brain className="w-3 h-3 text-neon-purple shrink-0" />
+                              </span>
                             )}
                           </div>
                         </td>
