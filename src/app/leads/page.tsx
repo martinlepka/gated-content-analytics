@@ -283,7 +283,9 @@ export default function LeadsPage() {
                             </div>
                           </div>
                           {lead.has_research && (
-                            <Brain className="h-3 w-3 text-neon-purple shrink-0" title="AI Researched" />
+                            <span title="AI Researched">
+                              <Brain className="h-3 w-3 text-neon-purple shrink-0" />
+                            </span>
                           )}
                         </div>
                       </td>
