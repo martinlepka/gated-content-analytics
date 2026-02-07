@@ -8,59 +8,61 @@ interface PersonaBarChartProps {
 }
 
 const COLORS = [
-  '#3b82f6', // blue
-  '#8b5cf6', // purple
-  '#06b6d4', // cyan
-  '#10b981', // green
-  '#f59e0b', // amber
-  '#ef4444', // red
+  '#00d4ff', // cyan
+  '#9945ff', // purple
+  '#ff0080', // magenta
+  '#22c55e', // green
+  '#f97316', // orange
   '#6b7280', // gray
+  '#eab308', // yellow
 ]
 
 export function PersonaBarChart({ data }: PersonaBarChartProps) {
   if (data.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center text-gray-500">
+      <div className="h-[250px] flex items-center justify-center text-muted-foreground font-mono text-sm">
         No persona data available
       </div>
     )
   }
 
-  // Take top 7 personas
-  const chartData = data.slice(0, 7)
+  // Take top 6 personas
+  const chartData = data.slice(0, 6)
 
   return (
-    <div className="h-[300px]">
+    <div className="h-[250px]">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={chartData}
           layout="vertical"
-          margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+          margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217 33% 20%)" horizontal={false} />
           <XAxis
             type="number"
-            tick={{ fontSize: 12, fill: '#6b7280' }}
+            tick={{ fontSize: 10, fill: 'hsl(215 20% 55%)' }}
             tickLine={false}
-            axisLine={{ stroke: '#e5e7eb' }}
+            axisLine={{ stroke: 'hsl(217 33% 20%)' }}
           />
           <YAxis
             dataKey="persona"
             type="category"
-            tick={{ fontSize: 12, fill: '#374151' }}
+            tick={{ fontSize: 10, fill: 'hsl(210 40% 98%)' }}
             tickLine={false}
             axisLine={false}
             width={75}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
+              backgroundColor: 'hsl(222 47% 9%)',
+              border: '1px solid hsl(217 33% 20%)',
               borderRadius: '0.5rem',
-              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+              boxShadow: '0 0 20px rgba(0, 212, 255, 0.1)',
             }}
+            labelStyle={{ color: 'hsl(210 40% 98%)', fontSize: 11 }}
+            itemStyle={{ color: 'hsl(215 20% 55%)', fontSize: 11 }}
             formatter={(value: number, name, props) => [
-              `${value} downloads (${props.payload.pct}%)`,
+              `${value} (${props.payload.pct}%)`,
               'Downloads'
             ]}
           />
@@ -69,7 +71,11 @@ export function PersonaBarChart({ data }: PersonaBarChartProps) {
             radius={[0, 4, 4, 0]}
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell
+                key={`cell-${index}`}
+                fill={COLORS[index % COLORS.length]}
+                style={{ filter: `drop-shadow(0 0 4px ${COLORS[index % COLORS.length]}40)` }}
+              />
             ))}
           </Bar>
         </BarChart>

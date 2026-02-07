@@ -1,21 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { fetchGatedContentAPI, OverviewData, TrendData, Lead } from '@/lib/supabase'
-import { MetricCard } from '@/components/dashboard/MetricCard'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
-import { FileText, TrendingUp, Users, Target, Loader2, ExternalLink } from 'lucide-react'
+import { FileText, TrendingUp, Users, Target, Loader2, Search, Filter, ChevronDown, Sparkles, Zap, Brain } from 'lucide-react'
 import Link from 'next/link'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, subDays, isAfter } from 'date-fns'
 
 const TIER_CONFIG = {
-  P0: { label: 'P0', color: 'bg-red-100 text-red-800' },
-  P1: { label: 'P1', color: 'bg-orange-100 text-orange-800' },
-  P2: { label: 'P2', color: 'bg-yellow-100 text-yellow-800' },
-  P3: { label: 'P3', color: 'bg-gray-100 text-gray-800' },
+  P0: { label: 'P0', color: 'bg-p0-light text-neon-magenta border border-p0/30', glow: 'shadow-[0_0_10px_rgba(255,0,128,0.3)]' },
+  P1: { label: 'P1', color: 'bg-p1-light text-neon-orange border border-p1/30', glow: 'shadow-[0_0_10px_rgba(249,115,22,0.3)]' },
+  P2: { label: 'P2', color: 'bg-p2-light text-neon-cyan border border-p2/30', glow: 'shadow-[0_0_10px_rgba(0,212,255,0.3)]' },
+  P3: { label: 'P3', color: 'bg-muted text-muted-foreground border border-border', glow: '' },
 }
+
+const TIME_FILTERS = [
+  { value: '7', label: '7D' },
+  { value: '14', label: '14D' },
+  { value: '30', label: '30D' },
+  { value: 'all', label: 'All' },
+]
 
 export default function DashboardPage() {
   const [overview, setOverview] = useState<OverviewData | null>(null)
@@ -24,6 +30,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+
+  // Filters
+  const [timeFilter, setTimeFilter] = useState('all')
+  const [tierFilter, setTierFilter] = useState<string>('')
+  const [sourceFilter, setSourceFilter] = useState<string>('')
+  const [campaignFilter, setCampaignFilter] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     async function fetchData() {
@@ -46,12 +59,76 @@ export default function DashboardPage() {
     fetchData()
   }, [])
 
+  // Get unique sources and campaigns for filters
+  const { sources, campaigns } = useMemo(() => {
+    const sourceSet = new Set<string>()
+    const campaignSet = new Set<string>()
+    leads.forEach(lead => {
+      if (lead.utm_source) sourceSet.add(lead.utm_source)
+      if (lead.utm_campaign) campaignSet.add(lead.utm_campaign)
+    })
+    return {
+      sources: Array.from(sourceSet).sort(),
+      campaigns: Array.from(campaignSet).sort(),
+    }
+  }, [leads])
+
+  // Filter leads
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      // Time filter
+      if (timeFilter !== 'all') {
+        const days = parseInt(timeFilter)
+        const cutoff = subDays(new Date(), days)
+        if (!isAfter(parseISO(lead.inbox_entered_at), cutoff)) return false
+      }
+
+      // Tier filter
+      if (tierFilter && lead.signal_tier !== tierFilter) return false
+
+      // Source filter
+      if (sourceFilter && lead.utm_source !== sourceFilter) return false
+
+      // Campaign filter
+      if (campaignFilter && lead.utm_campaign !== campaignFilter) return false
+
+      // Search
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        const matches =
+          lead.email?.toLowerCase().includes(q) ||
+          lead.company_name?.toLowerCase().includes(q) ||
+          lead.first_name?.toLowerCase().includes(q) ||
+          lead.last_name?.toLowerCase().includes(q) ||
+          lead.content_name?.toLowerCase().includes(q)
+        if (!matches) return false
+      }
+
+      return true
+    })
+  }, [leads, timeFilter, tierFilter, sourceFilter, campaignFilter, searchQuery])
+
+  // Calculate filtered stats
+  const filteredStats = useMemo(() => {
+    const total = filteredLeads.length
+    const highQuality = filteredLeads.filter(l => l.signal_tier === 'P0' || l.signal_tier === 'P1').length
+    const converted = filteredLeads.filter(l => l.action_status === 'done').length
+    const avgScore = total > 0
+      ? Math.round(filteredLeads.reduce((sum, l) => sum + (l.total_score || 0), 0) / total)
+      : 0
+
+    return { total, highQuality, converted, avgScore }
+  }, [filteredLeads])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-3 text-gray-500">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading analytics...</span>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <Loader2 className="h-8 w-8 animate-spin text-neon-cyan" />
+            <div className="absolute inset-0 blur-xl bg-neon-cyan/30 animate-pulse" />
+          </div>
+          <span className="text-muted-foreground font-mono text-sm">LOADING ANALYTICS...</span>
         </div>
       </div>
     )
@@ -59,152 +136,284 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow p-6 max-w-md">
-          <h2 className="text-lg font-semibold text-red-600 mb-2">Error</h2>
-          <p className="text-gray-600">{error}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-card border border-p0/50 rounded-lg p-6 max-w-md glow-magenta">
+          <h2 className="text-lg font-semibold text-neon-magenta mb-2">System Error</h2>
+          <p className="text-muted-foreground font-mono text-sm">{error}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Gated Content Analytics</h1>
-              <p className="text-sm text-gray-500 mt-1">Lead quality and performance insights</p>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center">
+                <Zap className="h-4 w-4 text-background" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-foreground">Gated Content Analytics</h1>
+                <p className="text-xs text-muted-foreground font-mono">SIGNAL INTELLIGENCE</p>
+              </div>
             </div>
-            <nav className="flex items-center gap-4">
-              <Link href="/" className="text-sm font-medium text-blue-600">Overview</Link>
-              <Link href="/content" className="text-sm font-medium text-gray-600 hover:text-gray-900">Content</Link>
-              <Link href="/leads" className="text-sm font-medium text-gray-600 hover:text-gray-900">Leads</Link>
+            <nav className="flex items-center gap-1">
+              <Link href="/" className="px-3 py-1.5 text-sm font-medium text-neon-cyan border-b-2 border-neon-cyan">
+                Overview
+              </Link>
+              <Link href="/content" className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Content
+              </Link>
+              <Link href="/leads" className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Leads
+              </Link>
             </nav>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <MetricCard
-            title="Total Downloads"
-            value={overview?.total_downloads || 0}
-            icon={<FileText className="h-5 w-5" />}
-            color="blue"
-          />
-          <MetricCard
-            title="High Quality"
-            value={`${overview?.high_quality_pct || 0}%`}
-            subtitle={`${overview?.high_quality_count || 0} P0/P1 leads`}
-            icon={<TrendingUp className="h-5 w-5" />}
-            color="green"
-          />
-          <MetricCard
-            title="Converted"
-            value={`${overview?.converted_pct || 0}%`}
-            subtitle={`${overview?.converted_count || 0} moved to pipeline`}
-            icon={<Target className="h-5 w-5" />}
-            color="purple"
-          />
-          <MetricCard
-            title="Top Persona"
-            value={overview?.by_persona?.[0]?.persona || 'N/A'}
-            subtitle={`${overview?.by_persona?.[0]?.pct || 0}% of downloads`}
-            icon={<Users className="h-5 w-5" />}
-            color="orange"
-          />
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="stat-card bg-card border border-border rounded-lg p-4 hover:border-neon-cyan/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4 text-neon-cyan" />
+              <span className="text-xs text-muted-foreground font-mono uppercase">Downloads</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">{filteredStats.total}</div>
+            <div className="text-xs text-muted-foreground">
+              {overview?.total_downloads || 0} total
+            </div>
+          </div>
+
+          <div className="stat-card bg-card border border-border rounded-lg p-4 hover:border-neon-green/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-neon-green" />
+              <span className="text-xs text-muted-foreground font-mono uppercase">High Quality</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">
+              {filteredStats.total > 0 ? Math.round((filteredStats.highQuality / filteredStats.total) * 100) : 0}%
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {filteredStats.highQuality} P0/P1 leads
+            </div>
+          </div>
+
+          <div className="stat-card bg-card border border-border rounded-lg p-4 hover:border-neon-purple/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-4 w-4 text-neon-purple" />
+              <span className="text-xs text-muted-foreground font-mono uppercase">Converted</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">
+              {filteredStats.total > 0 ? Math.round((filteredStats.converted / filteredStats.total) * 100) : 0}%
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {filteredStats.converted} to pipeline
+            </div>
+          </div>
+
+          <div className="stat-card bg-card border border-border rounded-lg p-4 hover:border-neon-magenta/50 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="h-4 w-4 text-neon-magenta" />
+              <span className="text-xs text-muted-foreground font-mono uppercase">Avg Score</span>
+            </div>
+            <div className="text-2xl font-bold text-foreground">{filteredStats.avgScore}</div>
+            <div className="text-xs text-muted-foreground">
+              / 220 max
+            </div>
+          </div>
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Trend Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Download Trend (30 days)</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className="bg-card border border-border rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-neon-cyan" />
+              Download Trend
+            </h3>
             <TrendChart data={trend} />
           </div>
 
-          {/* Persona Breakdown */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Persona Breakdown</h3>
+          <div className="bg-card border border-border rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Users className="h-4 w-4 text-neon-purple" />
+              Persona Breakdown
+            </h3>
             <PersonaBarChart data={overview?.by_persona || []} />
           </div>
         </div>
 
-        {/* All Downloads Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">All Downloads</h3>
-            <p className="text-sm text-gray-500 mt-1">Click on a row to view full details and AI research</p>
+        {/* Filters */}
+        <div className="bg-card border border-border rounded-lg p-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="flex-1 min-w-[200px] max-w-xs">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-muted border border-border rounded text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan/50 transition-colors"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Time Filter */}
+            <div className="flex items-center bg-muted rounded border border-border">
+              {TIME_FILTERS.map((tf) => (
+                <button
+                  key={tf.value}
+                  onClick={() => setTimeFilter(tf.value)}
+                  className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                    timeFilter === tf.value
+                      ? 'bg-neon-cyan text-background'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tier Filter */}
+            <div className="relative">
+              <select
+                className="appearance-none bg-muted border border-border rounded px-3 py-1.5 pr-8 text-xs font-medium text-foreground focus:outline-none focus:border-neon-cyan cursor-pointer"
+                value={tierFilter}
+                onChange={(e) => setTierFilter(e.target.value)}
+              >
+                <option value="">All Tiers</option>
+                <option value="P0">P0</option>
+                <option value="P1">P1</option>
+                <option value="P2">P2</option>
+                <option value="P3">P3</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+            </div>
+
+            {/* Source Filter */}
+            {sources.length > 0 && (
+              <div className="relative">
+                <select
+                  className="appearance-none bg-muted border border-border rounded px-3 py-1.5 pr-8 text-xs font-medium text-foreground focus:outline-none focus:border-neon-cyan cursor-pointer"
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                >
+                  <option value="">All Sources</option>
+                  {sources.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+              </div>
+            )}
+
+            {/* Campaign Filter */}
+            {campaigns.length > 0 && (
+              <div className="relative">
+                <select
+                  className="appearance-none bg-muted border border-border rounded px-3 py-1.5 pr-8 text-xs font-medium text-foreground focus:outline-none focus:border-neon-cyan cursor-pointer max-w-[150px]"
+                  value={campaignFilter}
+                  onChange={(e) => setCampaignFilter(e.target.value)}
+                >
+                  <option value="">All Campaigns</option>
+                  {campaigns.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+              </div>
+            )}
+
+            <span className="text-xs text-muted-foreground font-mono ml-auto">
+              {filteredLeads.length} results
+            </span>
           </div>
+        </div>
+
+        {/* Leads Table */}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-3">Date</th>
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-6 py-3">Email</th>
-                  <th className="px-6 py-3">Company</th>
-                  <th className="px-6 py-3">Content / Referral</th>
-                  <th className="px-6 py-3">Campaign</th>
-                  <th className="px-6 py-3 text-center">ICP Score</th>
-                  <th className="px-6 py-3 text-center">Tier</th>
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Contact</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Company</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Content</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Source</th>
+                  <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Score</th>
+                  <th className="px-3 py-2 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Tier</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {leads.length === 0 ? (
+              <tbody className="divide-y divide-border">
+                {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      No downloads found
+                    <td colSpan={7} className="px-3 py-12 text-center text-muted-foreground font-mono text-sm">
+                      No leads match your filters
                     </td>
                   </tr>
                 ) : (
-                  leads.map((lead) => {
+                  filteredLeads.map((lead) => {
                     const tierConfig = TIER_CONFIG[lead.signal_tier as keyof typeof TIER_CONFIG] || TIER_CONFIG.P3
+                    const isPersonalEmail = /gmail|yahoo|hotmail|outlook|icloud|aol|proton/i.test(lead.email || '')
+
                     return (
                       <tr
                         key={lead.id}
-                        className="hover:bg-blue-50 cursor-pointer transition-colors"
+                        className="cyber-row cursor-pointer group"
                         onClick={() => setSelectedLead(lead)}
                       >
-                        <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                          {format(parseISO(lead.inbox_entered_at), 'MMM d, yyyy')}
+                        <td className="px-3 py-2 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                          {format(parseISO(lead.inbox_entered_at), 'MM/dd')}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {lead.first_name || ''} {lead.last_name || ''}
-                            {!lead.first_name && !lead.last_name && <span className="text-gray-400">-</span>}
-                          </div>
-                          <div className="text-xs text-gray-500">{lead.title || ''}</div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {lead.email}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {lead.company_name || <span className="text-gray-400">-</span>}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-[200px] truncate" title={lead.content_name}>
-                            {lead.content_name || <span className="text-gray-400">-</span>}
-                          </div>
-                          {lead.utm_source && (
-                            <div className="text-xs text-gray-500">
-                              via {lead.utm_source}
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-foreground truncate max-w-[140px]">
+                                {lead.first_name || lead.last_name
+                                  ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
+                                  : lead.email?.split('@')[0]}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                                {lead.title || lead.detected_persona || '-'}
+                              </div>
                             </div>
-                          )}
+                            {lead.has_research && (
+                              <Brain className="h-3 w-3 text-neon-purple shrink-0" title="AI Researched" />
+                            )}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {lead.utm_campaign || <span className="text-gray-400">-</span>}
+                        <td className="px-3 py-2">
+                          <div className="text-sm text-foreground truncate max-w-[120px]">
+                            {isPersonalEmail ? (
+                              <span className="text-muted-foreground italic">Personal</span>
+                            ) : (
+                              lead.company_name || lead.company_domain || '-'
+                            )}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-sm font-semibold text-gray-900">{lead.icp_fit_score}</span>
+                        <td className="px-3 py-2">
+                          <div className="text-xs text-foreground truncate max-w-[150px]" title={lead.content_name || ''}>
+                            {lead.content_name || '-'}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${tierConfig.color}`}>
+                        <td className="px-3 py-2">
+                          <div className="text-xs text-muted-foreground">
+                            {lead.utm_source || 'direct'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className="text-sm font-bold text-foreground font-mono">{lead.total_score}</span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`tier-badge inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${tierConfig.color} ${tierConfig.glow}`}>
                             {tierConfig.label}
                           </span>
                         </td>
