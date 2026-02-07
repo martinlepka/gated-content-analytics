@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { fetchGatedContentAPI, Lead } from '@/lib/supabase'
-import { ArrowLeft, Loader2, ChevronDown, ChevronUp, Search, Filter, CheckCircle, Clock, XCircle, AlertCircle, Database, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Loader2, Search, Filter, CheckCircle, Clock, XCircle, AlertCircle, Database } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
+import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
 
 const STATUS_CONFIG = {
   new: { label: 'New', color: 'bg-blue-100 text-blue-800', icon: AlertCircle },
@@ -24,7 +25,7 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expandedLead, setExpandedLead] = useState<string | null>(null)
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
   // Filters
   const [tierFilter, setTierFilter] = useState<string>('')
@@ -167,7 +168,6 @@ export default function LeadsPage() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-3 w-8"></th>
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Contact</th>
                   <th className="px-6 py-3">Company</th>
@@ -182,171 +182,78 @@ export default function LeadsPage() {
               <tbody className="divide-y divide-gray-200">
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                       No leads found
                     </td>
                   </tr>
                 ) : (
                   filteredLeads.map((lead) => {
-                    const isExpanded = expandedLead === lead.id
                     const statusConfig = STATUS_CONFIG[lead.action_status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.new
                     const tierConfig = TIER_CONFIG[lead.signal_tier as keyof typeof TIER_CONFIG] || TIER_CONFIG.P3
                     const StatusIcon = statusConfig.icon
 
                     return (
-                      <>
-                        <tr
-                          key={lead.id}
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
-                        >
-                          <td className="px-6 py-4">
-                            {isExpanded ? (
-                              <ChevronUp className="h-4 w-4 text-gray-400" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 text-gray-400" />
+                      <tr
+                        key={lead.id}
+                        className="hover:bg-blue-50 cursor-pointer transition-colors"
+                        onClick={() => setSelectedLead(lead)}
+                      >
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {format(parseISO(lead.inbox_entered_at), 'MMM d, yyyy')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {lead.first_name || ''} {lead.last_name || ''}
+                            {!lead.first_name && !lead.last_name && '-'}
+                          </div>
+                          <div className="text-xs text-gray-500">{lead.email}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{lead.company_name || '-'}</div>
+                          <div className="text-xs text-gray-500">{lead.title || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-900 truncate max-w-[150px] block">
+                            {lead.content_name || '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-600">{lead.detected_persona}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tierConfig.color}`}>
+                            {tierConfig.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-sm font-medium text-gray-900">{lead.total_score}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${statusConfig.color}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            {statusConfig.label}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {lead.has_research && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800" title="AI Researched">
+                                AI
+                              </span>
                             )}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {format(parseISO(lead.created_at), 'MMM d, yyyy')}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {lead.first_name} {lead.last_name}
-                            </div>
-                            <div className="text-xs text-gray-500">{lead.email}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">{lead.company_name || '-'}</div>
-                            <div className="text-xs text-gray-500">{lead.title || '-'}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-gray-900 truncate max-w-[150px] block">
-                              {lead.content_name}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-gray-600">{lead.detected_persona}</span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tierConfig.color}`}>
-                              {tierConfig.label}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="text-sm font-medium text-gray-900">{lead.total_score}</span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${statusConfig.color}`}>
-                              <StatusIcon className="h-3 w-3" />
-                              {statusConfig.label}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {lead.has_research && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800" title="AI Researched">
-                                  AI
-                                </span>
-                              )}
-                              {lead.in_salesforce && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800" title="In Salesforce">
-                                  SF
-                                </span>
-                              )}
-                              {lead.in_discovery && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" title="In Discovery">
-                                  <Database className="h-3 w-3" />
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* Expanded Details */}
-                        {isExpanded && (
-                          <tr key={`${lead.id}-details`}>
-                            <td colSpan={10} className="bg-gray-50 px-6 py-4">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Contact Details */}
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Contact Details</h4>
-                                  <dl className="text-sm space-y-1">
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Email:</dt>
-                                      <dd className="text-gray-900">{lead.email}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Title:</dt>
-                                      <dd className="text-gray-900">{lead.title || '-'}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Company:</dt>
-                                      <dd className="text-gray-900">{lead.company_name || '-'}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Industry:</dt>
-                                      <dd className="text-gray-900">{lead.industry || '-'}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Size:</dt>
-                                      <dd className="text-gray-900">{lead.employee_count || '-'}</dd>
-                                    </div>
-                                  </dl>
-                                </div>
-
-                                {/* Scoring */}
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Scoring</h4>
-                                  <dl className="text-sm space-y-1">
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Total Score:</dt>
-                                      <dd className="text-gray-900 font-medium">{lead.total_score}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">ICP Fit:</dt>
-                                      <dd className="text-gray-900">{lead.icp_fit_score}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Intent:</dt>
-                                      <dd className="text-gray-900">{lead.intent_score}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Grade:</dt>
-                                      <dd className="text-gray-900">{lead.lead_grade}</dd>
-                                    </div>
-                                    {lead.rejection_reason && (
-                                      <div className="flex">
-                                        <dt className="text-gray-500 w-24">Rejection:</dt>
-                                        <dd className="text-red-600">{lead.rejection_reason}</dd>
-                                      </div>
-                                    )}
-                                  </dl>
-                                </div>
-
-                                {/* Attribution */}
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Attribution</h4>
-                                  <dl className="text-sm space-y-1">
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Content:</dt>
-                                      <dd className="text-gray-900">{lead.content_name}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">UTM Source:</dt>
-                                      <dd className="text-gray-900">{lead.utm_source || '-'}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="text-gray-500 w-24">Campaign:</dt>
-                                      <dd className="text-gray-900">{lead.utm_campaign || '-'}</dd>
-                                    </div>
-                                  </dl>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
+                            {lead.in_salesforce && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800" title="In Salesforce">
+                                SF
+                              </span>
+                            )}
+                            {lead.in_discovery && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" title="In Discovery">
+                                <Database className="h-3 w-3" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )
                   })
                 )}
@@ -355,6 +262,14 @@ export default function LeadsPage() {
           </div>
         </div>
       </main>
+
+      {/* Lead Detail Modal */}
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+        />
+      )}
     </div>
   )
 }

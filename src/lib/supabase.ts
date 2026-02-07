@@ -77,7 +77,7 @@ export interface Lead {
   intent_score: number
   action_status: string
   rejection_reason: string | null
-  created_at: string
+  inbox_entered_at: string
   detected_persona: string
   content_name: string
   utm_source: string | null
@@ -85,6 +85,68 @@ export interface Lead {
   has_research: boolean
   in_salesforce: boolean
   in_discovery: boolean
+  // AI Research data
+  ai_research?: {
+    company?: {
+      overview?: string
+      financials?: {
+        annual_revenue?: string
+        market_cap?: string
+        yoy_growth?: string
+      }
+      entity_structure?: {
+        type?: string
+        entity_count?: number
+      }
+      recent_news?: Array<{
+        headline: string
+        date: string
+        source: string
+        url?: string
+      }>
+      tech_stack_categorized?: Record<string, string[]>
+      transformation_signals?: {
+        ai_initiative?: boolean
+        erp_modernization?: boolean
+        data_transformation?: boolean
+        digital_transformation?: boolean
+        automation_initiative?: boolean
+      }
+      why_now_signals?: {
+        new_cfo_hire?: boolean
+        new_cio_hire?: boolean
+        new_cto_hire?: boolean
+        layoffs_announced?: boolean
+        cost_cutting?: boolean
+        mna_activity?: boolean
+        expansion?: boolean
+        first_data_hire?: boolean
+      }
+      data_team?: {
+        has_data_engineers?: boolean
+        data_team_size?: number
+      }
+    }
+    finance_leaders_found?: Array<{
+      name: string
+      title: string
+      linkedin_url?: string
+    }>
+    recommended_value_driver?: {
+      driver?: string
+      reasoning?: string
+    }
+  }
+  context_for_outreach?: {
+    talking_points?: string[]
+    form_name?: string
+    content_downloaded?: string[]
+    content_id?: string
+    utm_source?: string
+    utm_medium?: string
+    utm_campaign?: string
+    country?: string
+  }
 }
 
 export interface TrendData {
