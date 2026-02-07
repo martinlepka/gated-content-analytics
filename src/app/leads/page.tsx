@@ -30,8 +30,8 @@ function getStatusClass(status: string): string {
     case 'new': return 'text-neon-cyan'
     case 'working': return 'text-neon-orange'
     case 'done': return 'text-neon-green'
-    case 'rejected': return 'text-cyan-500/40'
-    default: return 'text-cyan-500/50'
+    case 'rejected': return 'text-gray-400'
+    default: return 'text-gray-500'
   }
 }
 
@@ -103,7 +103,7 @@ export default function LeadsPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="cyber-loader" />
-          <span className="text-[10px] text-cyan-500/50 font-cyber tracking-wider">LOADING.LEADS</span>
+          <span className="text-[10px] text-gray-500 font-cyber tracking-wider">Loading leads...</span>
         </div>
       </div>
     )
@@ -114,7 +114,7 @@ export default function LeadsPage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="cyber-card p-6 max-w-md text-center">
           <div className="text-neon-magenta font-cyber text-sm mb-2">SYSTEM.ERROR</div>
-          <p className="text-[11px] text-cyan-500/60">{error}</p>
+          <p className="text-[11px] text-gray-600">{error}</p>
         </div>
       </div>
     )
@@ -129,12 +129,12 @@ export default function LeadsPage() {
             <Link href="/" className="font-cyber text-sm text-neon-cyan text-glow-sm tracking-wider hover:text-neon-cyan/80">
               SIGNAL.ANALYTICS
             </Link>
-            <span className="text-cyan-500/30">|</span>
-            <span className="text-[10px] text-cyan-500/60 tracking-wider">LEAD.DATABASE</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-[10px] text-gray-500 tracking-wider">LEAD DATABASE</span>
           </div>
           <nav className="flex items-center gap-1">
-            <Link href="/" className="nav-link text-cyan-500/50">OVERVIEW</Link>
-            <Link href="/content" className="nav-link text-cyan-500/50">CONTENT</Link>
+            <Link href="/" className="nav-link">OVERVIEW</Link>
+            <Link href="/content" className="nav-link">CONTENT</Link>
             <Link href="/leads" className="nav-link active">LEADS</Link>
           </nav>
         </div>
@@ -147,7 +147,7 @@ export default function LeadsPage() {
           <div className="flex flex-wrap items-center gap-3">
             {/* Search */}
             <div className="flex-1 min-w-[180px] max-w-xs relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-cyan-500/40" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
               <input
                 type="text"
                 placeholder="SEARCH..."
@@ -201,7 +201,7 @@ export default function LeadsPage() {
                   <option key={type} value={type}>{SIGNAL_TYPE_LABELS[type] || type}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-cyan-500/40 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
             </div>
 
             {/* Status Filter */}
@@ -217,11 +217,11 @@ export default function LeadsPage() {
                 <option value="done">Converted</option>
                 <option value="rejected">Rejected</option>
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-cyan-500/40 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
             </div>
 
-            <span className="text-[9px] text-cyan-500/40 font-mono ml-auto tracking-wider">
-              {filteredLeads.length} RECORDS
+            <span className="text-[10px] text-gray-500 font-mono ml-auto">
+              {filteredLeads.length} records
             </span>
           </div>
         </div>
@@ -244,8 +244,8 @@ export default function LeadsPage() {
             <tbody>
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-cyan-500/30 font-cyber text-[10px] tracking-wider">
-                    NO.RECORDS.FOUND
+                  <td colSpan={8} className="px-3 py-8 text-center text-gray-400 font-cyber text-xs">
+                    No records found
                   </td>
                 </tr>
               ) : (
@@ -267,38 +267,38 @@ export default function LeadsPage() {
                       <td className="text-center">
                         <span className="font-cyber text-sm text-neon-cyan">{lead.total_score}</span>
                       </td>
-                      <td className="text-cyan-500/60 font-mono text-[10px]">
+                      <td className="text-gray-500 font-mono text-[11px]">
                         {format(parseISO(lead.inbox_entered_at), 'MM/dd')}
                       </td>
                       <td>
                         <div className="flex items-center gap-2">
                           <div className="min-w-0">
-                            <div className="text-[11px] text-cyan-300 truncate max-w-[140px]">
+                            <div className="text-[12px] text-gray-800 truncate max-w-[140px]">
                               {lead.first_name || lead.last_name
                                 ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                 : lead.email?.split('@')[0]}
                             </div>
-                            <div className="text-[9px] text-cyan-500/40 truncate max-w-[140px]">
+                            <div className="text-[10px] text-gray-500 truncate max-w-[140px]">
                               {lead.email}
                             </div>
                           </div>
                           {lead.has_research && (
                             <span title="AI Researched">
-                              <Brain className="h-3 w-3 text-neon-purple shrink-0" />
+                              <Brain className="h-3.5 w-3.5 text-neon-purple shrink-0" />
                             </span>
                           )}
                         </div>
                       </td>
                       <td>
                         {isPersonalEmail ? (
-                          <span className="text-[10px] text-cyan-500/30 italic">personal</span>
+                          <span className="text-[11px] text-gray-400 italic">personal</span>
                         ) : (
                           <div className="min-w-0">
-                            <div className="text-[11px] text-cyan-300 truncate max-w-[120px]">
+                            <div className="text-[12px] text-gray-700 truncate max-w-[120px]">
                               {lead.company_name || lead.company_domain || '-'}
                             </div>
                             {lead.detected_persona && (
-                              <div className="text-[9px] text-neon-purple truncate max-w-[120px]">
+                              <div className="text-[10px] text-neon-purple truncate max-w-[120px]">
                                 {lead.detected_persona}
                               </div>
                             )}
@@ -309,7 +309,7 @@ export default function LeadsPage() {
                         <span className="signal-badge">{signalLabel}</span>
                       </td>
                       <td>
-                        <div className="text-[10px] text-cyan-500/60 truncate max-w-[150px]" title={lead.content_name || ''}>
+                        <div className="text-[11px] text-gray-600 truncate max-w-[150px]" title={lead.content_name || ''}>
                           {lead.content_name || '-'}
                         </div>
                       </td>
