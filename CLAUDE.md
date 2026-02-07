@@ -180,8 +180,9 @@ new → working → done (converted)
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
-- **Styling:** Tailwind CSS (Cyberpunk theme)
+- **Styling:** Tailwind CSS (Light theme with cyberpunk accents)
 - **Charts:** Recharts
+- **Auth:** Simple password protection (session-based)
 - **Backend:** Supabase Edge Functions (read-only API)
 - **Database:** GTM Supabase project (jhglcgljsporzelhsvvz)
 - **Deployment:** Vercel (auto-deploy from GitHub)
@@ -192,10 +193,13 @@ new → working → done (converted)
 Gated Content Analytics/
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx              # Main dashboard
+│   │   ├── layout.tsx            # Root layout with AuthGate wrapper
+│   │   ├── page.tsx              # Main dashboard (sortable table)
 │   │   ├── content/page.tsx      # Content breakdown
 │   │   └── leads/page.tsx        # Lead list with filters
 │   ├── components/
+│   │   ├── auth/
+│   │   │   └── AuthGate.tsx      # Password protection (password stored here)
 │   │   ├── charts/
 │   │   │   ├── TrendChart.tsx
 │   │   │   └── PersonaBarChart.tsx
@@ -208,6 +212,42 @@ Gated Content Analytics/
 ├── tailwind.config.ts
 └── CLAUDE.md
 ```
+
+---
+
+## Authentication
+
+Simple password-based access control for agency users.
+
+### How It Works
+
+1. **AuthGate Component** (`/src/components/auth/AuthGate.tsx`)
+   - Wraps the entire app in `layout.tsx`
+   - Shows login form if not authenticated
+   - Password is stored as a constant in the component file
+
+2. **Session Persistence**
+   - Uses `sessionStorage` with key `gca_authenticated`
+   - Auth persists until browser tab is closed
+   - No server-side auth required
+
+3. **Changing the Password**
+   - Edit the `CORRECT_PASSWORD` constant in `AuthGate.tsx`
+   - Redeploy to Vercel
+
+### Login Flow
+```
+User visits app → AuthGate checks sessionStorage
+                      ↓
+              Not authenticated → Show login form
+                      ↓
+              Enter password → Validate against constant
+                      ↓
+              Correct → Set sessionStorage, show dashboard
+              Wrong → Show error, clear input
+```
+
+---
 
 ## Commands
 
@@ -273,23 +313,42 @@ npx supabase functions deploy gated-content-api --project-ref jhglcgljsporzelhsv
 - Overview dashboard with metrics cards
 - Download trend chart (30 days)
 - Persona breakdown chart
-- Full downloads table with all details
+- Full downloads table with sortable columns
+- Column sorting (click header to toggle asc/desc)
+- Status filter dropdown
+- SOURCE column showing utm_source
+- Color-coded TYPE badges (Demo=pink, Gated=cyan, Contact=orange, etc.)
 - Clickable rows → Lead Detail Modal
 - Modal with AI research display
+- Rejection reason display in modal (when status=rejected)
+- Prominent campaign name display in modal
 - Content breakdown page (`/content`)
 - Leads list page (`/leads`) with filters
+- Password protection (session-based)
 - Read-only access (no writes)
 
 ## Pending / Future
 
-- [ ] Agency authentication (magic link)
-- [ ] Multi-agency data scoping
+- [x] ~~Agency authentication~~ → Implemented as password protection
+- [ ] Multi-agency data scoping (separate passwords per agency)
 - [ ] Export to CSV
 - [ ] Smart personal email handling
 
 ---
 
 ## Changelog
+
+### 2026-02-07 (Update 3)
+- Added password protection (AuthGate component)
+- Session-based auth using sessionStorage
+- Light theme with cyberpunk accents (replaced dark theme)
+- Sortable table columns (click headers)
+- Added SOURCE column showing utm_source
+- Added STATUS column with color-coded badges
+- Color-coded TYPE badges per signal type
+- Slimmer table rows with tighter padding
+- Rejection reason display in modal
+- Prominent campaign name display in modal
 
 ### 2026-02-07 (Update 2)
 - Comprehensive documentation update
