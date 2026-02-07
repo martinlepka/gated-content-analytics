@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { fetchGatedContentAPI, Lead } from '@/lib/supabase'
-import { ArrowLeft, Loader2, Search, Filter, CheckCircle, Clock, XCircle, AlertCircle, Database } from 'lucide-react'
+import { ArrowLeft, Loader2, Search, Filter, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
@@ -244,11 +244,6 @@ export default function LeadsPage() {
                             {lead.in_salesforce && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800" title="In Salesforce">
                                 SF
-                              </span>
-                            )}
-                            {lead.in_discovery && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" title="In Discovery">
-                                <Database className="h-3 w-3" />
                               </span>
                             )}
                           </div>

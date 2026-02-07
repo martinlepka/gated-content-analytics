@@ -84,7 +84,6 @@ export interface Lead {
   utm_campaign: string | null
   has_research: boolean
   in_salesforce: boolean
-  in_discovery: boolean
   // AI Research data
   ai_research?: {
     company?: {
