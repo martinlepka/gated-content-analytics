@@ -1,7 +1,7 @@
 'use client'
 
-import { Lead } from '@/lib/supabase'
-import { X, Building2, User, Mail, Briefcase, TrendingUp, Zap, ExternalLink, Brain, Globe, Calendar, Sparkles, Target, AlertTriangle } from 'lucide-react'
+import { Lead, SIGNAL_TYPE_LABELS } from '@/lib/supabase'
+import { X, Building2, User, Mail, Briefcase, ExternalLink, Brain, Globe, Sparkles, Target, AlertTriangle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 interface LeadDetailModalProps {
@@ -9,300 +9,325 @@ interface LeadDetailModalProps {
   onClose: () => void
 }
 
-const TIER_CONFIG = {
-  P0: { label: 'P0', color: 'bg-p0-light text-neon-magenta border border-p0/30', glow: 'shadow-[0_0_15px_rgba(255,0,128,0.4)]' },
-  P1: { label: 'P1', color: 'bg-p1-light text-neon-orange border border-p1/30', glow: 'shadow-[0_0_15px_rgba(249,115,22,0.4)]' },
-  P2: { label: 'P2', color: 'bg-p2-light text-neon-cyan border border-p2/30', glow: 'shadow-[0_0_15px_rgba(0,212,255,0.4)]' },
-  P3: { label: 'P3', color: 'bg-muted text-muted-foreground border border-border', glow: '' },
-}
-
-const STATUS_CONFIG = {
-  new: { label: 'New', color: 'text-neon-cyan' },
-  working: { label: 'Working', color: 'text-neon-orange' },
-  done: { label: 'Converted', color: 'text-neon-green' },
-  rejected: { label: 'Disqualified', color: 'text-muted-foreground' },
-}
-
 const PERSONAL_EMAIL_DOMAINS = /gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|icloud|me\.com|mac\.com|aol|protonmail/i
 
+function getTierClass(tier: string): string {
+  switch (tier) {
+    case 'P0': return 'tier-p0'
+    case 'P1': return 'tier-p1'
+    case 'P2': return 'tier-p2'
+    default: return 'tier-p3'
+  }
+}
+
 export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
-  const tierConfig = TIER_CONFIG[lead.signal_tier as keyof typeof TIER_CONFIG] || TIER_CONFIG.P3
-  const statusConfig = STATUS_CONFIG[lead.action_status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.new
   const research = lead.ai_research
   const context = lead.context_for_outreach
   const isPersonalEmail = PERSONAL_EMAIL_DOMAINS.test(lead.email || '')
 
-  // Score color based on value
   const getScoreColor = (score: number, max: number) => {
     const pct = score / max
-    if (pct >= 0.7) return 'text-neon-green'
+    if (pct >= 0.7) return 'text-neon-green text-glow-sm'
     if (pct >= 0.4) return 'text-neon-cyan'
-    return 'text-muted-foreground'
+    return 'text-cyan-500/50'
   }
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'new': return { label: 'NEW', color: 'text-neon-cyan' }
+      case 'working': return { label: 'WORKING', color: 'text-neon-orange' }
+      case 'done': return { label: 'CONVERTED', color: 'text-neon-green' }
+      case 'rejected': return { label: 'REJECTED', color: 'text-cyan-500/40' }
+      default: return { label: status.toUpperCase(), color: 'text-cyan-500/50' }
+    }
+  }
+
+  const status = getStatusDisplay(lead.action_status)
+  const signalLabel = lead.trigger_signal_type ? SIGNAL_TYPE_LABELS[lead.trigger_signal_type] || lead.trigger_signal_type : 'Unknown'
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
+      {/* Backdrop with grid effect */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/90 backdrop-blur-sm"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '20px 20px'
+        }}
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative min-h-screen flex items-start justify-center p-4 pt-12">
-        <div className="relative bg-card border border-border rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="relative min-h-screen flex items-start justify-center p-4 pt-8">
+        <div className="cyber-modal relative w-full max-w-2xl max-h-[90vh] overflow-hidden">
+          {/* Corner decorations */}
+          <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-cyan-500/40" />
+          <div className="absolute top-0 right-0 w-8 h-8 border-r-2 border-t-2 border-cyan-500/40" />
+          <div className="absolute bottom-0 left-0 w-8 h-8 border-l-2 border-b-2 border-cyan-500/40" />
+          <div className="absolute bottom-0 right-0 w-8 h-8 border-r-2 border-b-2 border-cyan-500/40" />
+
           {/* Header */}
-          <div className="sticky top-0 bg-card border-b border-border px-4 py-3 flex items-center justify-between z-10">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`h-10 w-10 rounded-lg ${tierConfig.color} ${tierConfig.glow} flex items-center justify-center shrink-0`}>
-                <span className="text-sm font-bold">{tierConfig.label}</span>
+          <div className="border-b border-cyan-500/20 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 text-[10px] font-cyber font-bold tracking-wider ${getTierClass(lead.signal_tier)}`}>
+                  {lead.signal_tier}
+                </span>
+                <div>
+                  <div className="font-cyber text-sm text-neon-cyan tracking-wide">
+                    {lead.first_name || lead.last_name
+                      ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim().toUpperCase()
+                      : lead.email?.split('@')[0].toUpperCase()}
+                  </div>
+                  <div className="text-[10px] text-cyan-500/60">
+                    {lead.title || lead.detected_persona || 'UNKNOWN'}
+                  </div>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold text-foreground truncate">
-                  {lead.first_name || lead.last_name
-                    ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
-                    : lead.email?.split('@')[0]}
-                </h2>
-                <p className="text-xs text-muted-foreground truncate">
-                  {lead.title || lead.detected_persona || 'Unknown Role'}
-                </p>
-              </div>
+              <button
+                onClick={onClose}
+                className="p-2 text-cyan-500/50 hover:text-neon-cyan hover:bg-cyan-500/10 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto max-h-[calc(90vh-60px)] p-4 space-y-4">
-            {/* Quick Stats Row */}
-            <div className="grid grid-cols-4 gap-2">
-              <div className="bg-muted/50 rounded p-2 text-center">
-                <div className={`text-lg font-bold font-mono ${getScoreColor(lead.total_score, 220)}`}>
+          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-4 space-y-3">
+            {/* Score Bar */}
+            <div className="grid grid-cols-5 gap-2">
+              <div className="cyber-stat p-2 text-center">
+                <div className={`font-cyber text-lg font-bold ${getScoreColor(lead.total_score, 220)}`}>
                   {lead.total_score}
                 </div>
-                <div className="text-[10px] text-muted-foreground uppercase">Total</div>
+                <div className="text-[8px] text-cyan-500/40 tracking-wider">TOTAL</div>
               </div>
-              <div className="bg-muted/50 rounded p-2 text-center">
-                <div className={`text-lg font-bold font-mono ${getScoreColor(lead.icp_fit_score, 100)}`}>
+              <div className="cyber-stat p-2 text-center">
+                <div className={`font-cyber text-lg font-bold ${getScoreColor(lead.icp_fit_score, 100)}`}>
                   {lead.icp_fit_score}
                 </div>
-                <div className="text-[10px] text-muted-foreground uppercase">ICP Fit</div>
+                <div className="text-[8px] text-cyan-500/40 tracking-wider">ICP FIT</div>
               </div>
-              <div className="bg-muted/50 rounded p-2 text-center">
-                <div className={`text-lg font-bold font-mono ${getScoreColor(lead.intent_score, 40)}`}>
+              <div className="cyber-stat p-2 text-center">
+                <div className={`font-cyber text-lg font-bold ${getScoreColor(lead.intent_score, 40)}`}>
                   {lead.intent_score}
                 </div>
-                <div className="text-[10px] text-muted-foreground uppercase">Intent</div>
+                <div className="text-[8px] text-cyan-500/40 tracking-wider">INTENT</div>
               </div>
-              <div className="bg-muted/50 rounded p-2 text-center">
-                <div className={`text-lg font-bold ${statusConfig.color}`}>
+              <div className="cyber-stat p-2 text-center">
+                <div className={`font-cyber text-lg font-bold ${status.color}`}>
                   {lead.lead_grade}
                 </div>
-                <div className="text-[10px] text-muted-foreground uppercase">Grade</div>
+                <div className="text-[8px] text-cyan-500/40 tracking-wider">GRADE</div>
+              </div>
+              <div className="cyber-stat p-2 text-center">
+                <div className={`text-[10px] font-bold ${status.color}`}>
+                  {status.label}
+                </div>
+                <div className="text-[8px] text-cyan-500/40 tracking-wider">STATUS</div>
               </div>
             </div>
 
-            {/* Contact & Company Row */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Contact & Company */}
+            <div className="grid grid-cols-2 gap-2">
               {/* Contact */}
-              <div className="bg-muted/30 border border-border rounded-lg p-3">
+              <div className="border border-cyan-500/15 bg-cyan-500/5 p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <User className="h-3.5 w-3.5 text-neon-cyan" />
-                  <span className="text-xs font-medium text-foreground">Contact</span>
+                  <User className="h-3 w-3 text-neon-cyan" />
+                  <span className="text-[9px] font-cyber text-cyan-500/60 tracking-wider">CONTACT</span>
                 </div>
-                <div className="space-y-1.5 text-xs">
+                <div className="space-y-1.5 text-[11px]">
                   <div className="flex items-center gap-2">
-                    <Mail className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="text-foreground truncate">{lead.email}</span>
+                    <Mail className="h-3 w-3 text-cyan-500/40" />
+                    <span className="text-cyan-300 truncate">{lead.email}</span>
                   </div>
                   {lead.title && (
                     <div className="flex items-center gap-2">
-                      <Briefcase className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground truncate">{lead.title}</span>
+                      <Briefcase className="h-3 w-3 text-cyan-500/40" />
+                      <span className="text-cyan-500/60 truncate">{lead.title}</span>
                     </div>
                   )}
                   {lead.detected_persona && (
                     <div className="flex items-center gap-2">
-                      <Target className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="text-neon-purple text-[10px] font-medium">{lead.detected_persona}</span>
+                      <Target className="h-3 w-3 text-cyan-500/40" />
+                      <span className="text-neon-purple text-[10px] font-mono">{lead.detected_persona}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Company */}
-              <div className="bg-muted/30 border border-border rounded-lg p-3">
+              <div className="border border-purple-500/15 bg-purple-500/5 p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="h-3.5 w-3.5 text-neon-purple" />
-                  <span className="text-xs font-medium text-foreground">Company</span>
+                  <Building2 className="h-3 w-3 text-neon-purple" />
+                  <span className="text-[9px] font-cyber text-cyan-500/60 tracking-wider">COMPANY</span>
                 </div>
                 {isPersonalEmail ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    <span>Personal email - no company data</span>
+                  <div className="flex items-center gap-2 text-[11px] text-cyan-500/40 italic">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Personal email</span>
                   </div>
                 ) : (
-                  <div className="space-y-1.5 text-xs">
-                    <div className="text-foreground font-medium truncate">
+                  <div className="space-y-1 text-[11px]">
+                    <div className="text-cyan-300 font-medium truncate">
                       {lead.company_name || lead.company_domain || '-'}
                     </div>
-                    {lead.industry && (
-                      <div className="text-muted-foreground">{lead.industry}</div>
-                    )}
-                    {lead.employee_count && (
-                      <div className="text-muted-foreground">{lead.employee_count} employees</div>
-                    )}
+                    {lead.industry && <div className="text-cyan-500/50">{lead.industry}</div>}
+                    {lead.employee_count && <div className="text-cyan-500/50">{lead.employee_count} emp</div>}
                   </div>
                 )}
               </div>
             </div>
 
             {/* Attribution */}
-            <div className="bg-muted/30 border border-border rounded-lg p-3">
+            <div className="border border-orange-500/15 bg-orange-500/5 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Globe className="h-3.5 w-3.5 text-neon-orange" />
-                <span className="text-xs font-medium text-foreground">Attribution</span>
+                <Globe className="h-3 w-3 text-neon-orange" />
+                <span className="text-[9px] font-cyber text-cyan-500/60 tracking-wider">ATTRIBUTION</span>
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Content</span>
-                  <span className="text-foreground truncate max-w-[120px]" title={lead.content_name || ''}>{lead.content_name || '-'}</span>
+              <div className="grid grid-cols-3 gap-2 text-[10px]">
+                <div>
+                  <div className="text-cyan-500/40">Type</div>
+                  <div className="text-cyan-300 truncate">{signalLabel}</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date</span>
-                  <span className="text-foreground font-mono">{format(parseISO(lead.inbox_entered_at), 'MMM d, yyyy')}</span>
+                <div>
+                  <div className="text-cyan-500/40">Content</div>
+                  <div className="text-cyan-300 truncate" title={lead.content_name || ''}>{lead.content_name || '-'}</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Source</span>
-                  <span className="text-foreground">{lead.utm_source || 'direct'}</span>
+                <div>
+                  <div className="text-cyan-500/40">Date</div>
+                  <div className="text-cyan-300 font-mono">{format(parseISO(lead.inbox_entered_at), 'MMM d')}</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Campaign</span>
-                  <span className="text-foreground truncate max-w-[100px]">{lead.utm_campaign || '-'}</span>
+                <div>
+                  <div className="text-cyan-500/40">Source</div>
+                  <div className="text-cyan-300">{lead.utm_source || 'direct'}</div>
+                </div>
+                <div>
+                  <div className="text-cyan-500/40">Campaign</div>
+                  <div className="text-cyan-300 truncate">{lead.utm_campaign || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-cyan-500/40">SF Status</div>
+                  <div className={lead.in_salesforce ? 'text-neon-green' : 'text-cyan-500/40'}>
+                    {lead.in_salesforce ? 'IN SF' : '-'}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* AI Research Section */}
             {research ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {/* Research Header */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 border-b border-cyan-500/10 pb-2">
                   <Brain className="h-4 w-4 text-neon-purple" />
-                  <span className="text-sm font-medium text-foreground">AI Research</span>
-                  <span className="text-[10px] text-neon-purple px-1.5 py-0.5 bg-neon-purple/10 rounded">ENRICHED</span>
+                  <span className="text-[10px] font-cyber text-neon-purple tracking-wider">AI.RESEARCH</span>
+                  <span className="signal-badge ml-auto">ENRICHED</span>
                 </div>
 
                 {/* Company Overview */}
                 {research.company?.overview && (
-                  <div className="bg-neon-purple/5 border border-neon-purple/20 rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+                  <div className="border border-purple-500/20 bg-purple-500/5 p-2">
+                    <p className="text-[10px] text-cyan-500/70 leading-relaxed line-clamp-3">
                       {research.company.overview}
                     </p>
                   </div>
                 )}
 
                 {/* Signals Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Transformation Signals */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Transformation */}
                   {research.company?.transformation_signals && (
-                    <div className="bg-muted/30 border border-border rounded-lg p-3">
-                      <div className="text-[10px] text-muted-foreground uppercase mb-2">Transformation</div>
+                    <div className="border border-cyan-500/10 p-2">
+                      <div className="text-[8px] text-cyan-500/40 tracking-wider mb-1">TRANSFORMATION</div>
                       <div className="flex flex-wrap gap-1">
                         {research.company.transformation_signals.ai_initiative && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">AI</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-cyan-500/10 text-neon-cyan border border-cyan-500/20">AI</span>
                         )}
                         {research.company.transformation_signals.erp_modernization && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">ERP</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-cyan-500/10 text-neon-cyan border border-cyan-500/20">ERP</span>
                         )}
                         {research.company.transformation_signals.data_transformation && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">Data</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-cyan-500/10 text-neon-cyan border border-cyan-500/20">DATA</span>
                         )}
                         {research.company.transformation_signals.digital_transformation && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">Digital</span>
-                        )}
-                        {research.company.transformation_signals.automation_initiative && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">Auto</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-cyan-500/10 text-neon-cyan border border-cyan-500/20">DIGITAL</span>
                         )}
                         {!Object.values(research.company.transformation_signals).some(Boolean) && (
-                          <span className="text-[10px] text-muted-foreground">None detected</span>
+                          <span className="text-[9px] text-cyan-500/30">None</span>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {/* Why Now Signals */}
+                  {/* Why Now */}
                   {research.company?.why_now_signals && (
-                    <div className="bg-muted/30 border border-border rounded-lg p-3">
-                      <div className="text-[10px] text-muted-foreground uppercase mb-2">Why Now</div>
+                    <div className="border border-cyan-500/10 p-2">
+                      <div className="text-[8px] text-cyan-500/40 tracking-wider mb-1">WHY NOW</div>
                       <div className="flex flex-wrap gap-1">
                         {research.company.why_now_signals.new_cfo_hire && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded">CFO</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-green-500/10 text-neon-green border border-green-500/20">CFO</span>
                         )}
                         {research.company.why_now_signals.new_cio_hire && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded">CIO</span>
-                        )}
-                        {research.company.why_now_signals.new_cto_hire && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded">CTO</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-green-500/10 text-neon-green border border-green-500/20">CIO</span>
                         )}
                         {research.company.why_now_signals.layoffs_announced && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-magenta/10 text-neon-magenta rounded">Layoffs</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-pink-500/10 text-neon-magenta border border-pink-500/20">LAYOFFS</span>
                         )}
                         {research.company.why_now_signals.cost_cutting && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-magenta/10 text-neon-magenta rounded">Cuts</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-pink-500/10 text-neon-magenta border border-pink-500/20">CUTS</span>
                         )}
                         {research.company.why_now_signals.mna_activity && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-orange/10 text-neon-orange rounded">M&A</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-orange-500/10 text-neon-orange border border-orange-500/20">M&A</span>
                         )}
                         {research.company.why_now_signals.expansion && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-neon-orange/10 text-neon-orange rounded">Growth</span>
+                          <span className="px-1.5 py-0.5 text-[8px] bg-orange-500/10 text-neon-orange border border-orange-500/20">GROWTH</span>
                         )}
                         {!Object.values(research.company.why_now_signals).some(Boolean) && (
-                          <span className="text-[10px] text-muted-foreground">None detected</span>
+                          <span className="text-[9px] text-cyan-500/30">None</span>
                         )}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Tech Stack */}
+                {/* Tech Stack - Compact */}
                 {research.company?.tech_stack_categorized && Object.keys(research.company.tech_stack_categorized).length > 0 && (
-                  <div className="bg-muted/30 border border-border rounded-lg p-3">
-                    <div className="text-[10px] text-muted-foreground uppercase mb-2">Tech Stack</div>
-                    <div className="space-y-1">
-                      {Object.entries(research.company.tech_stack_categorized).slice(0, 3).map(([category, tools]) => (
-                        tools && tools.length > 0 && (
-                          <div key={category} className="text-xs">
-                            <span className="text-muted-foreground capitalize">{category.replace(/_/g, ' ')}:</span>{' '}
-                            <span className="text-foreground">{(tools as string[]).slice(0, 3).join(', ')}</span>
-                          </div>
-                        )
-                      ))}
+                  <div className="border border-cyan-500/10 p-2">
+                    <div className="text-[8px] text-cyan-500/40 tracking-wider mb-1">TECH STACK</div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(research.company.tech_stack_categorized).slice(0, 2).flatMap(([_, tools]) =>
+                        (tools as string[]).slice(0, 4).map((tool: string, i: number) => (
+                          <span key={i} className="px-1.5 py-0.5 text-[8px] bg-cyan-500/5 text-cyan-500/60 border border-cyan-500/10">
+                            {tool}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Finance Leaders */}
+                {/* Finance Leaders - Compact */}
                 {research.finance_leaders_found && research.finance_leaders_found.length > 0 && (
-                  <div className="bg-muted/30 border border-border rounded-lg p-3">
-                    <div className="text-[10px] text-muted-foreground uppercase mb-2">Finance Leaders</div>
-                    <div className="space-y-1.5">
-                      {research.finance_leaders_found.slice(0, 3).map((leader, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs">
-                          <div className="min-w-0">
-                            <span className="text-foreground font-medium">{leader.name}</span>
-                            <span className="text-muted-foreground ml-2 truncate">{leader.title}</span>
+                  <div className="border border-cyan-500/10 p-2">
+                    <div className="text-[8px] text-cyan-500/40 tracking-wider mb-1">FINANCE LEADERS</div>
+                    <div className="space-y-1">
+                      {research.finance_leaders_found.slice(0, 2).map((leader, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-[10px]">
+                          <div className="truncate">
+                            <span className="text-cyan-300">{leader.name}</span>
+                            <span className="text-cyan-500/40 ml-2">{leader.title}</span>
                           </div>
                           {leader.linkedin_url && (
                             <a
                               href={leader.linkedin_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-neon-cyan hover:text-neon-cyan/80 shrink-0 ml-2"
+                              className="text-neon-cyan hover:text-neon-cyan/80 ml-2"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <ExternalLink className="h-3 w-3" />
@@ -314,17 +339,15 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                   </div>
                 )}
 
-                {/* Recent News */}
+                {/* Recent News - Compact */}
                 {research.company?.recent_news && research.company.recent_news.length > 0 && (
-                  <div className="bg-muted/30 border border-border rounded-lg p-3">
-                    <div className="text-[10px] text-muted-foreground uppercase mb-2">Recent News</div>
-                    <div className="space-y-2">
+                  <div className="border border-cyan-500/10 p-2">
+                    <div className="text-[8px] text-cyan-500/40 tracking-wider mb-1">RECENT NEWS</div>
+                    <div className="space-y-1">
                       {research.company.recent_news.slice(0, 2).map((news, idx) => (
-                        <div key={idx} className="text-xs">
-                          <p className="text-foreground line-clamp-1">{news.headline}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {news.source} - {news.date}
-                          </p>
+                        <div key={idx} className="text-[10px]">
+                          <p className="text-cyan-300 line-clamp-1">{news.headline}</p>
+                          <p className="text-[8px] text-cyan-500/40">{news.source} • {news.date}</p>
                         </div>
                       ))}
                     </div>
@@ -333,36 +356,36 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
 
                 {/* Value Driver */}
                 {research.recommended_value_driver && (
-                  <div className="bg-neon-green/5 border border-neon-green/20 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="border border-green-500/20 bg-green-500/5 p-2">
+                    <div className="flex items-center gap-1 mb-1">
                       <Sparkles className="h-3 w-3 text-neon-green" />
-                      <span className="text-[10px] text-neon-green uppercase font-medium">Recommended Approach</span>
+                      <span className="text-[8px] text-neon-green tracking-wider">RECOMMENDED APPROACH</span>
                     </div>
-                    <p className="text-xs text-foreground capitalize">
+                    <p className="text-[10px] text-cyan-300 capitalize">
                       {research.recommended_value_driver.driver?.replace(/_/g, ' ')}
                     </p>
                     {research.recommended_value_driver.reasoning && (
-                      <p className="text-[10px] text-muted-foreground mt-1">{research.recommended_value_driver.reasoning}</p>
+                      <p className="text-[9px] text-cyan-500/50 mt-1 line-clamp-2">{research.recommended_value_driver.reasoning}</p>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="bg-muted/30 border border-border rounded-lg p-6 text-center">
-                <Brain className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">AI research pending</p>
+              <div className="border border-cyan-500/10 p-6 text-center">
+                <Brain className="h-6 w-6 text-cyan-500/20 mx-auto mb-2" />
+                <p className="text-[10px] text-cyan-500/40 font-cyber tracking-wider">AI.RESEARCH.PENDING</p>
               </div>
             )}
 
             {/* Talking Points */}
             {context?.talking_points && context.talking_points.length > 0 && (
-              <div className="bg-muted/30 border border-border rounded-lg p-3">
-                <div className="text-[10px] text-muted-foreground uppercase mb-2">Talking Points</div>
+              <div className="border border-cyan-500/10 p-2">
+                <div className="text-[8px] text-cyan-500/40 tracking-wider mb-1">TALKING POINTS</div>
                 <ul className="space-y-1">
-                  {context.talking_points.map((point, idx) => (
-                    <li key={idx} className="text-xs text-foreground flex items-start gap-2">
-                      <span className="text-neon-cyan shrink-0">-</span>
-                      {point}
+                  {context.talking_points.slice(0, 3).map((point, idx) => (
+                    <li key={idx} className="text-[10px] text-cyan-500/70 flex items-start gap-2">
+                      <span className="text-neon-cyan">▸</span>
+                      <span className="line-clamp-1">{point}</span>
                     </li>
                   ))}
                 </ul>
