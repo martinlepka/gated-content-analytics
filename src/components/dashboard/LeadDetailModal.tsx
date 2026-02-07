@@ -120,6 +120,17 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
               </div>
             </div>
 
+            {/* Rejection Reason */}
+            {lead.action_status === 'rejected' && lead.rejection_reason && (
+              <div className="border border-red-200 bg-red-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <span className="text-[10px] font-cyber text-red-600 tracking-wider">REJECTION REASON</span>
+                </div>
+                <div className="text-[12px] text-red-700 mt-1">{lead.rejection_reason.replace(/_/g, ' ')}</div>
+              </div>
+            )}
+
             {/* Contact & Company */}
             <div className="grid grid-cols-2 gap-3">
               {/* Contact */}

@@ -281,19 +281,20 @@ export default function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="text-left">DATE</th>
-                  <th className="text-left">TYPE</th>
+                  <th className="text-left w-[70px]">DATE</th>
+                  <th className="text-left w-[90px]">TYPE</th>
                   <th className="text-left">CONTACT</th>
                   <th className="text-left">COMPANY</th>
-                  <th className="text-left">CONTENT</th>
-                  <th className="text-center">SCORE</th>
-                  <th className="text-center">TIER</th>
+                  <th className="text-left min-w-[200px]">CONTENT</th>
+                  <th className="text-center w-[60px]">SCORE</th>
+                  <th className="text-center w-[50px]">TIER</th>
+                  <th className="text-center w-[80px]">STATUS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-400 font-cyber text-xs">
+                    <td colSpan={8} className="text-center py-8 text-gray-400 font-cyber text-xs">
                       No data found
                     </td>
                   </tr>
@@ -305,6 +306,25 @@ export default function DashboardPage() {
                                      lead.signal_tier === 'P1' ? 'tier-p1' :
                                      lead.signal_tier === 'P2' ? 'tier-p2' : 'tier-p3'
 
+                    // Signal type colors
+                    const signalType = lead.trigger_signal_type || ''
+                    const typeColorClass =
+                      signalType === 'webflow_demo_request' ? 'bg-pink-100 text-pink-700 border-pink-200' :
+                      signalType === 'webflow_content_download' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
+                      signalType === 'webflow_contact' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                      signalType === 'webflow_newsletter' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                      signalType === 'webflow_popup' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                      signalType === 'webflow_webinar_reg' ? 'bg-green-100 text-green-700 border-green-200' :
+                      signalType === 'webflow_event_reg' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                      'bg-gray-100 text-gray-600 border-gray-200'
+
+                    // Status colors
+                    const statusClass =
+                      lead.action_status === 'new' ? 'text-neon-cyan' :
+                      lead.action_status === 'working' ? 'text-neon-orange' :
+                      lead.action_status === 'done' ? 'text-neon-green' :
+                      'text-gray-400'
+
                     return (
                       <tr
                         key={lead.id}
@@ -315,7 +335,9 @@ export default function DashboardPage() {
                           {format(parseISO(lead.inbox_entered_at), 'MM/dd HH:mm')}
                         </td>
                         <td>
-                          <span className="signal-badge">{signalLabel}</span>
+                          <span className={`inline-block px-2 py-0.5 text-[9px] font-medium border rounded ${typeColorClass}`}>
+                            {signalLabel}
+                          </span>
                         </td>
                         <td>
                           <div className="flex items-center gap-2">
@@ -340,7 +362,7 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td>
-                          <div className="text-gray-500 text-[11px] truncate max-w-[120px]" title={lead.content_name}>
+                          <div className="text-gray-700 text-[12px]" title={lead.content_name}>
                             {lead.content_name || '-'}
                           </div>
                         </td>
@@ -350,6 +372,11 @@ export default function DashboardPage() {
                         <td className="text-center">
                           <span className={`inline-block px-2.5 py-1 text-[10px] font-cyber font-bold rounded ${tierClass}`}>
                             {lead.signal_tier}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <span className={`text-[10px] font-bold uppercase ${statusClass}`}>
+                            {lead.action_status}
                           </span>
                         </td>
                       </tr>

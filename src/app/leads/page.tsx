@@ -236,8 +236,8 @@ export default function LeadsPage() {
                 <th className="w-[60px]">DATE</th>
                 <th>CONTACT</th>
                 <th>COMPANY</th>
-                <th>TYPE</th>
-                <th>CONTENT</th>
+                <th className="w-[90px]">TYPE</th>
+                <th className="min-w-[180px]">CONTENT</th>
                 <th className="w-[70px]">STATUS</th>
               </tr>
             </thead>
@@ -252,6 +252,18 @@ export default function LeadsPage() {
                 filteredLeads.map((lead) => {
                   const isPersonalEmail = /gmail|yahoo|hotmail|outlook|icloud|aol|proton/i.test(lead.email || '')
                   const signalLabel = lead.trigger_signal_type ? SIGNAL_TYPE_LABELS[lead.trigger_signal_type] : '-'
+
+                  // Signal type colors
+                  const signalType = lead.trigger_signal_type || ''
+                  const typeColorClass =
+                    signalType === 'webflow_demo_request' ? 'bg-pink-100 text-pink-700 border-pink-200' :
+                    signalType === 'webflow_content_download' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
+                    signalType === 'webflow_contact' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                    signalType === 'webflow_newsletter' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                    signalType === 'webflow_popup' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                    signalType === 'webflow_webinar_reg' ? 'bg-green-100 text-green-700 border-green-200' :
+                    signalType === 'webflow_event_reg' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                    'bg-gray-100 text-gray-600 border-gray-200'
 
                   return (
                     <tr
@@ -306,10 +318,12 @@ export default function LeadsPage() {
                         )}
                       </td>
                       <td>
-                        <span className="signal-badge">{signalLabel}</span>
+                        <span className={`inline-block px-2 py-0.5 text-[9px] font-medium border rounded ${typeColorClass}`}>
+                          {signalLabel}
+                        </span>
                       </td>
                       <td>
-                        <div className="text-[11px] text-gray-600 truncate max-w-[150px]" title={lead.content_name || ''}>
+                        <div className="text-[12px] text-gray-700" title={lead.content_name || ''}>
                           {lead.content_name || '-'}
                         </div>
                       </td>
