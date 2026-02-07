@@ -188,6 +188,13 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                 <Globe className="h-4 w-4 text-neon-orange" />
                 <span className="text-[10px] font-cyber text-gray-500 tracking-wider">ATTRIBUTION</span>
               </div>
+              {/* Campaign - prominent if exists */}
+              {lead.utm_campaign && (
+                <div className="mb-3 p-2 bg-orange-100 rounded border border-orange-200">
+                  <div className="text-gray-500 text-[9px] uppercase tracking-wide">Campaign</div>
+                  <div className="text-orange-800 font-semibold text-[13px]">{lead.utm_campaign}</div>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-3 text-[11px]">
                 <div>
                   <div className="text-gray-500 text-[10px]">Type</div>
@@ -199,15 +206,11 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                 </div>
                 <div>
                   <div className="text-gray-500 text-[10px]">Date</div>
-                  <div className="text-gray-700 font-mono">{format(parseISO(lead.inbox_entered_at), 'MMM d')}</div>
+                  <div className="text-gray-700 font-mono">{format(parseISO(lead.inbox_entered_at), 'MMM d, yyyy')}</div>
                 </div>
                 <div>
                   <div className="text-gray-500 text-[10px]">Source</div>
-                  <div className="text-gray-700">{lead.utm_source || 'direct'}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-[10px]">Campaign</div>
-                  <div className="text-gray-700 truncate">{lead.utm_campaign || '-'}</div>
+                  <div className="text-gray-700 font-medium">{lead.utm_source || 'direct'}</div>
                 </div>
                 <div>
                   <div className="text-gray-500 text-[10px]">SF Status</div>

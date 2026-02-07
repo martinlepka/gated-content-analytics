@@ -5,7 +5,7 @@ import { fetchGatedContentAPI, OverviewData, TrendData, Lead, SIGNAL_TYPE_LABELS
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
-import { Search, ChevronDown, Zap, Activity, Target, Brain, Users, TrendingUp } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
@@ -29,7 +29,12 @@ export default function DashboardPage() {
   const [tierFilter, setTierFilter] = useState<string>('')
   const [signalTypeFilter, setSignalTypeFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string>('date')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     async function fetchData() {
@@ -64,7 +69,7 @@ export default function DashboardPage() {
   }, [leads])
 
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
+    let filtered = leads.filter(lead => {
       if (timeFilter !== 'all') {
         const days = parseInt(timeFilter)
         const cutoff = subDays(new Date(), days)
@@ -72,18 +77,81 @@ export default function DashboardPage() {
       }
       if (tierFilter && lead.signal_tier !== tierFilter) return false
       if (sourceFilter && lead.utm_source !== sourceFilter) return false
+      if (statusFilter && lead.action_status !== statusFilter) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matches =
           lead.email?.toLowerCase().includes(q) ||
           lead.company_name?.toLowerCase().includes(q) ||
           lead.first_name?.toLowerCase().includes(q) ||
-          lead.last_name?.toLowerCase().includes(q)
+          lead.last_name?.toLowerCase().includes(q) ||
+          lead.content_name?.toLowerCase().includes(q)
         if (!matches) return false
       }
       return true
     })
-  }, [leads, timeFilter, tierFilter, sourceFilter, searchQuery])
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal: any, bVal: any
+      switch (sortColumn) {
+        case 'date':
+          aVal = a.inbox_entered_at
+          bVal = b.inbox_entered_at
+          break
+        case 'score':
+          aVal = a.total_score || 0
+          bVal = b.total_score || 0
+          break
+        case 'tier':
+          const tierOrder = { P0: 0, P1: 1, P2: 2, P3: 3 }
+          aVal = tierOrder[a.signal_tier as keyof typeof tierOrder] ?? 4
+          bVal = tierOrder[b.signal_tier as keyof typeof tierOrder] ?? 4
+          break
+        case 'contact':
+          aVal = (a.first_name || a.last_name || a.email || '').toLowerCase()
+          bVal = (b.first_name || b.last_name || b.email || '').toLowerCase()
+          break
+        case 'company':
+          aVal = (a.company_name || '').toLowerCase()
+          bVal = (b.company_name || '').toLowerCase()
+          break
+        case 'source':
+          aVal = (a.utm_source || '').toLowerCase()
+          bVal = (b.utm_source || '').toLowerCase()
+          break
+        case 'status':
+          const statusOrder = { new: 0, working: 1, done: 2, rejected: 3 }
+          aVal = statusOrder[a.action_status as keyof typeof statusOrder] ?? 4
+          bVal = statusOrder[b.action_status as keyof typeof statusOrder] ?? 4
+          break
+        default:
+          aVal = a.inbox_entered_at
+          bVal = b.inbox_entered_at
+      }
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return filtered
+  }, [leads, timeFilter, tierFilter, sourceFilter, statusFilter, searchQuery, sortColumn, sortDirection])
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(column)
+      setSortDirection('desc')
+    }
+  }
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) return <ChevronDown className="w-3 h-3 text-gray-300" />
+    return sortDirection === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-neon-cyan" />
+      : <ChevronDown className="w-3 h-3 text-neon-cyan" />
+  }
 
   const stats = useMemo(() => {
     const total = filteredLeads.length
@@ -272,6 +340,22 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* Status */}
+          <div className="relative">
+            <select
+              className="cyber-select pr-7"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Status</option>
+              <option value="new">New</option>
+              <option value="working">Working</option>
+              <option value="done">Done</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+          </div>
+
           <div className="ml-auto text-[10px] text-gray-500 font-mono">{filteredLeads.length} records</div>
         </div>
 
@@ -281,20 +365,35 @@ export default function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="text-left w-[70px]">DATE</th>
-                  <th className="text-left w-[90px]">TYPE</th>
-                  <th className="text-left">CONTACT</th>
-                  <th className="text-left">COMPANY</th>
-                  <th className="text-left min-w-[200px]">CONTENT</th>
-                  <th className="text-center w-[60px]">SCORE</th>
-                  <th className="text-center w-[50px]">TIER</th>
-                  <th className="text-center w-[80px]">STATUS</th>
+                  <th className="text-left w-[75px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('date')}>
+                    <span className="flex items-center gap-1">DATE <SortIcon column="date" /></span>
+                  </th>
+                  <th className="text-left w-[80px]">TYPE</th>
+                  <th className="text-left cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('contact')}>
+                    <span className="flex items-center gap-1">CONTACT <SortIcon column="contact" /></span>
+                  </th>
+                  <th className="text-left cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('company')}>
+                    <span className="flex items-center gap-1">COMPANY <SortIcon column="company" /></span>
+                  </th>
+                  <th className="text-left min-w-[180px]">CONTENT</th>
+                  <th className="text-left w-[70px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('source')}>
+                    <span className="flex items-center gap-1">SOURCE <SortIcon column="source" /></span>
+                  </th>
+                  <th className="text-center w-[55px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('score')}>
+                    <span className="flex items-center justify-center gap-1">SCORE <SortIcon column="score" /></span>
+                  </th>
+                  <th className="text-center w-[45px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('tier')}>
+                    <span className="flex items-center justify-center gap-1">TIER <SortIcon column="tier" /></span>
+                  </th>
+                  <th className="text-center w-[65px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('status')}>
+                    <span className="flex items-center justify-center gap-1">STATUS <SortIcon column="status" /></span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-gray-400 font-cyber text-xs">
+                    <td colSpan={9} className="text-center py-8 text-gray-400 font-cyber text-xs">
                       No data found
                     </td>
                   </tr>
@@ -364,6 +463,11 @@ export default function DashboardPage() {
                         <td>
                           <div className="text-gray-600 text-[11px]" title={lead.content_name}>
                             {lead.content_name || '-'}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="text-gray-500 text-[10px]">
+                            {lead.utm_source || '-'}
                           </div>
                         </td>
                         <td className="text-center">
