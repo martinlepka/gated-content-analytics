@@ -27,9 +27,9 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
 
   const getScoreColor = (score: number, max: number) => {
     const pct = score / max
-    if (pct >= 0.7) return 'text-neon-green text-glow-sm'
+    if (pct >= 0.7) return 'text-neon-green'
     if (pct >= 0.4) return 'text-neon-cyan'
-    return 'text-cyan-500/50'
+    return 'text-gray-400'
   }
 
   const getStatusDisplay = (status: string) => {
@@ -47,173 +47,161 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop with grid effect */}
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/90 backdrop-blur-sm"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px)
-          `,
-          backgroundSize: '20px 20px'
-        }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative min-h-screen flex items-start justify-center p-4 pt-8">
+      <div className="relative min-h-screen flex items-start justify-center p-4 pt-12">
         <div className="cyber-modal relative w-full max-w-2xl max-h-[90vh] overflow-hidden">
-          {/* Corner decorations */}
-          <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-cyan-500/40" />
-          <div className="absolute top-0 right-0 w-8 h-8 border-r-2 border-t-2 border-cyan-500/40" />
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-l-2 border-b-2 border-cyan-500/40" />
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-r-2 border-b-2 border-cyan-500/40" />
 
           {/* Header */}
-          <div className="border-b border-cyan-500/20 px-4 py-3">
+          <div className="border-b border-gray-200 px-5 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 text-[10px] font-cyber font-bold tracking-wider ${getTierClass(lead.signal_tier)}`}>
+                <span className={`px-3 py-1.5 text-[10px] font-cyber font-bold tracking-wider rounded ${getTierClass(lead.signal_tier)}`}>
                   {lead.signal_tier}
                 </span>
                 <div>
-                  <div className="font-cyber text-sm text-neon-cyan tracking-wide">
+                  <div className="font-cyber text-base text-gray-800 tracking-wide">
                     {lead.first_name || lead.last_name
-                      ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim().toUpperCase()
-                      : lead.email?.split('@')[0].toUpperCase()}
+                      ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
+                      : lead.email?.split('@')[0]}
                   </div>
-                  <div className="text-[10px] text-cyan-500/60">
-                    {lead.title || lead.detected_persona || 'UNKNOWN'}
+                  <div className="text-[11px] text-gray-500">
+                    {lead.title || lead.detected_persona || 'Unknown'}
                   </div>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 text-cyan-500/50 hover:text-neon-cyan hover:bg-cyan-500/10 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-4 space-y-3">
+          <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-5 space-y-4">
             {/* Score Bar */}
             <div className="grid grid-cols-5 gap-2">
-              <div className="cyber-stat p-2 text-center">
-                <div className={`font-cyber text-lg font-bold ${getScoreColor(lead.total_score, 220)}`}>
+              <div className="cyber-stat p-3 text-center">
+                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.total_score, 220)}`}>
                   {lead.total_score}
                 </div>
-                <div className="text-[8px] text-cyan-500/40 tracking-wider">TOTAL</div>
+                <div className="text-[9px] text-gray-500 tracking-wider">TOTAL</div>
               </div>
-              <div className="cyber-stat p-2 text-center">
-                <div className={`font-cyber text-lg font-bold ${getScoreColor(lead.icp_fit_score, 100)}`}>
+              <div className="cyber-stat p-3 text-center">
+                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.icp_fit_score, 100)}`}>
                   {lead.icp_fit_score}
                 </div>
-                <div className="text-[8px] text-cyan-500/40 tracking-wider">ICP FIT</div>
+                <div className="text-[9px] text-gray-500 tracking-wider">ICP FIT</div>
               </div>
-              <div className="cyber-stat p-2 text-center">
-                <div className={`font-cyber text-lg font-bold ${getScoreColor(lead.intent_score, 40)}`}>
+              <div className="cyber-stat p-3 text-center">
+                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.intent_score, 40)}`}>
                   {lead.intent_score}
                 </div>
-                <div className="text-[8px] text-cyan-500/40 tracking-wider">INTENT</div>
+                <div className="text-[9px] text-gray-500 tracking-wider">INTENT</div>
               </div>
-              <div className="cyber-stat p-2 text-center">
-                <div className={`font-cyber text-lg font-bold ${status.color}`}>
+              <div className="cyber-stat p-3 text-center">
+                <div className={`font-cyber text-xl font-bold ${status.color}`}>
                   {lead.lead_grade}
                 </div>
-                <div className="text-[8px] text-cyan-500/40 tracking-wider">GRADE</div>
+                <div className="text-[9px] text-gray-500 tracking-wider">GRADE</div>
               </div>
-              <div className="cyber-stat p-2 text-center">
-                <div className={`text-[10px] font-bold ${status.color}`}>
+              <div className="cyber-stat p-3 text-center">
+                <div className={`text-[11px] font-bold ${status.color}`}>
                   {status.label}
                 </div>
-                <div className="text-[8px] text-cyan-500/40 tracking-wider">STATUS</div>
+                <div className="text-[9px] text-gray-500 tracking-wider">STATUS</div>
               </div>
             </div>
 
             {/* Contact & Company */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {/* Contact */}
-              <div className="border border-cyan-500/15 bg-cyan-500/5 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="h-3 w-3 text-neon-cyan" />
-                  <span className="text-[9px] font-cyber text-cyan-500/60 tracking-wider">CONTACT</span>
+              <div className="border border-gray-200 bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="h-4 w-4 text-neon-cyan" />
+                  <span className="text-[10px] font-cyber text-gray-500 tracking-wider">CONTACT</span>
                 </div>
-                <div className="space-y-1.5 text-[11px]">
+                <div className="space-y-2 text-[12px]">
                   <div className="flex items-center gap-2">
-                    <Mail className="h-3 w-3 text-cyan-500/40" />
-                    <span className="text-cyan-300 truncate">{lead.email}</span>
+                    <Mail className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-gray-700 truncate">{lead.email}</span>
                   </div>
                   {lead.title && (
                     <div className="flex items-center gap-2">
-                      <Briefcase className="h-3 w-3 text-cyan-500/40" />
-                      <span className="text-cyan-500/60 truncate">{lead.title}</span>
+                      <Briefcase className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-gray-600 truncate">{lead.title}</span>
                     </div>
                   )}
                   {lead.detected_persona && (
                     <div className="flex items-center gap-2">
-                      <Target className="h-3 w-3 text-cyan-500/40" />
-                      <span className="text-neon-purple text-[10px] font-mono">{lead.detected_persona}</span>
+                      <Target className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-neon-purple text-[11px] font-medium">{lead.detected_persona}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Company */}
-              <div className="border border-purple-500/15 bg-purple-500/5 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="h-3 w-3 text-neon-purple" />
-                  <span className="text-[9px] font-cyber text-cyan-500/60 tracking-wider">COMPANY</span>
+              <div className="border border-gray-200 bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Building2 className="h-4 w-4 text-neon-purple" />
+                  <span className="text-[10px] font-cyber text-gray-500 tracking-wider">COMPANY</span>
                 </div>
                 {isPersonalEmail ? (
-                  <div className="flex items-center gap-2 text-[11px] text-cyan-500/40 italic">
-                    <AlertTriangle className="h-3 w-3" />
+                  <div className="flex items-center gap-2 text-[12px] text-gray-400 italic">
+                    <AlertTriangle className="h-3.5 w-3.5" />
                     <span>Personal email</span>
                   </div>
                 ) : (
-                  <div className="space-y-1 text-[11px]">
-                    <div className="text-cyan-300 font-medium truncate">
+                  <div className="space-y-1 text-[12px]">
+                    <div className="text-gray-800 font-medium truncate">
                       {lead.company_name || lead.company_domain || '-'}
                     </div>
-                    {lead.industry && <div className="text-cyan-500/50">{lead.industry}</div>}
-                    {lead.employee_count && <div className="text-cyan-500/50">{lead.employee_count} emp</div>}
+                    {lead.industry && <div className="text-gray-600">{lead.industry}</div>}
+                    {lead.employee_count && <div className="text-gray-500">{lead.employee_count} employees</div>}
                   </div>
                 )}
               </div>
             </div>
 
             {/* Attribution */}
-            <div className="border border-orange-500/15 bg-orange-500/5 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Globe className="h-3 w-3 text-neon-orange" />
-                <span className="text-[9px] font-cyber text-cyan-500/60 tracking-wider">ATTRIBUTION</span>
+            <div className="border border-gray-200 bg-orange-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Globe className="h-4 w-4 text-neon-orange" />
+                <span className="text-[10px] font-cyber text-gray-500 tracking-wider">ATTRIBUTION</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-[10px]">
+              <div className="grid grid-cols-3 gap-3 text-[11px]">
                 <div>
-                  <div className="text-cyan-500/40">Type</div>
-                  <div className="text-cyan-300 truncate">{signalLabel}</div>
+                  <div className="text-gray-500 text-[10px]">Type</div>
+                  <div className="text-gray-700 truncate font-medium">{signalLabel}</div>
                 </div>
                 <div>
-                  <div className="text-cyan-500/40">Content</div>
-                  <div className="text-cyan-300 truncate" title={lead.content_name || ''}>{lead.content_name || '-'}</div>
+                  <div className="text-gray-500 text-[10px]">Content</div>
+                  <div className="text-gray-700 truncate" title={lead.content_name || ''}>{lead.content_name || '-'}</div>
                 </div>
                 <div>
-                  <div className="text-cyan-500/40">Date</div>
-                  <div className="text-cyan-300 font-mono">{format(parseISO(lead.inbox_entered_at), 'MMM d')}</div>
+                  <div className="text-gray-500 text-[10px]">Date</div>
+                  <div className="text-gray-700 font-mono">{format(parseISO(lead.inbox_entered_at), 'MMM d')}</div>
                 </div>
                 <div>
-                  <div className="text-cyan-500/40">Source</div>
-                  <div className="text-cyan-300">{lead.utm_source || 'direct'}</div>
+                  <div className="text-gray-500 text-[10px]">Source</div>
+                  <div className="text-gray-700">{lead.utm_source || 'direct'}</div>
                 </div>
                 <div>
-                  <div className="text-cyan-500/40">Campaign</div>
-                  <div className="text-cyan-300 truncate">{lead.utm_campaign || '-'}</div>
+                  <div className="text-gray-500 text-[10px]">Campaign</div>
+                  <div className="text-gray-700 truncate">{lead.utm_campaign || '-'}</div>
                 </div>
                 <div>
-                  <div className="text-cyan-500/40">SF Status</div>
-                  <div className={lead.in_salesforce ? 'text-neon-green' : 'text-cyan-500/40'}>
-                    {lead.in_salesforce ? 'IN SF' : '-'}
+                  <div className="text-gray-500 text-[10px]">SF Status</div>
+                  <div className={lead.in_salesforce ? 'text-neon-green font-medium' : 'text-gray-400'}>
+                    {lead.in_salesforce ? 'In Salesforce' : '-'}
                   </div>
                 </div>
               </div>

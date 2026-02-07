@@ -123,94 +123,94 @@ export default function DashboardPage() {
       <header className="cyber-header sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30">
+            <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-100 to-purple-100 border border-cyan-200 rounded">
               <Zap className="w-4 h-4 text-neon-cyan" />
             </div>
             <div>
               <div className="font-cyber text-sm text-neon-cyan text-glow-sm tracking-wider">SIGNAL.ANALYTICS</div>
-              <div className="text-[9px] text-cyan-500/50 tracking-widest">LEAD INTELLIGENCE SYSTEM</div>
+              <div className="text-[9px] text-gray-500 tracking-widest">LEAD INTELLIGENCE SYSTEM</div>
             </div>
           </div>
           <nav className="flex items-center gap-1">
             <Link href="/" className="nav-link active">Overview</Link>
-            <Link href="/content" className="nav-link text-cyan-500/50">Content</Link>
-            <Link href="/leads" className="nav-link text-cyan-500/50">Leads</Link>
+            <Link href="/content" className="nav-link">Content</Link>
+            <Link href="/leads" className="nav-link">Leads</Link>
           </nav>
         </div>
       </header>
 
       <main className="max-w-[1400px] mx-auto px-4 py-4">
         {/* Stats Row */}
-        <div className="grid grid-cols-5 gap-2 mb-4">
-          <div className="cyber-stat p-3">
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-3 h-3 text-neon-cyan" />
-              <span className="text-[8px] text-cyan-500/60 font-cyber tracking-wider">SIGNALS</span>
+              <Activity className="w-3.5 h-3.5 text-neon-cyan" />
+              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">SIGNALS</span>
             </div>
-            <div className="font-cyber text-xl text-neon-cyan text-glow score-display">{stats.total}</div>
+            <div className="font-cyber text-2xl text-neon-cyan text-glow score-display">{stats.total}</div>
           </div>
-          <div className="cyber-stat p-3">
+          <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Target className="w-3 h-3 text-neon-magenta" />
-              <span className="text-[8px] text-cyan-500/60 font-cyber tracking-wider">P0/P1</span>
+              <Target className="w-3.5 h-3.5 text-neon-magenta" />
+              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">P0/P1</span>
             </div>
-            <div className="font-cyber text-xl text-neon-magenta text-glow score-display">{stats.highQuality}</div>
-            <div className="text-[9px] text-cyan-500/40">{stats.total > 0 ? Math.round((stats.highQuality / stats.total) * 100) : 0}%</div>
+            <div className="font-cyber text-2xl text-neon-magenta text-glow score-display">{stats.highQuality}</div>
+            <div className="text-[10px] text-gray-400">{stats.total > 0 ? Math.round((stats.highQuality / stats.total) * 100) : 0}%</div>
           </div>
-          <div className="cyber-stat p-3">
+          <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-3 h-3 text-neon-green" />
-              <span className="text-[8px] text-cyan-500/60 font-cyber tracking-wider">CONVERTED</span>
+              <TrendingUp className="w-3.5 h-3.5 text-neon-green" />
+              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">CONVERTED</span>
             </div>
-            <div className="font-cyber text-xl text-neon-green text-glow score-display">{stats.converted}</div>
-            <div className="text-[9px] text-cyan-500/40">{stats.total > 0 ? Math.round((stats.converted / stats.total) * 100) : 0}%</div>
+            <div className="font-cyber text-2xl text-neon-green text-glow score-display">{stats.converted}</div>
+            <div className="text-[10px] text-gray-400">{stats.total > 0 ? Math.round((stats.converted / stats.total) * 100) : 0}%</div>
           </div>
-          <div className="cyber-stat p-3">
+          <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Brain className="w-3 h-3 text-neon-purple" />
-              <span className="text-[8px] text-cyan-500/60 font-cyber tracking-wider">AVG SCORE</span>
+              <Brain className="w-3.5 h-3.5 text-neon-purple" />
+              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">AVG SCORE</span>
             </div>
-            <div className="font-cyber text-xl text-neon-purple text-glow score-display">{stats.avgScore}</div>
-            <div className="text-[9px] text-cyan-500/40">/ 220</div>
+            <div className="font-cyber text-2xl text-neon-purple text-glow score-display">{stats.avgScore}</div>
+            <div className="text-[10px] text-gray-400">/ 220</div>
           </div>
-          <div className="cyber-stat p-3">
+          <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Users className="w-3 h-3 text-neon-orange" />
-              <span className="text-[8px] text-cyan-500/60 font-cyber tracking-wider">TOP PERSONA</span>
+              <Users className="w-3.5 h-3.5 text-neon-orange" />
+              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">TOP PERSONA</span>
             </div>
-            <div className="font-cyber text-sm text-neon-orange text-glow-sm">{overview?.by_persona?.[0]?.persona || 'N/A'}</div>
-            <div className="text-[9px] text-cyan-500/40">{overview?.by_persona?.[0]?.pct || 0}%</div>
+            <div className="font-cyber text-base text-neon-orange text-glow-sm">{overview?.by_persona?.[0]?.persona || 'N/A'}</div>
+            <div className="text-[10px] text-gray-400">{overview?.by_persona?.[0]?.pct || 0}%</div>
           </div>
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="cyber-card p-3">
-            <div className="font-cyber text-[9px] text-cyan-500/60 tracking-wider mb-2">SIGNAL TREND [30D]</div>
+          <div className="cyber-card p-4">
+            <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">SIGNAL TREND [30D]</div>
             <TrendChart data={trend} />
           </div>
-          <div className="cyber-card p-3">
-            <div className="font-cyber text-[9px] text-cyan-500/60 tracking-wider mb-2">PERSONA DISTRIBUTION</div>
+          <div className="cyber-card p-4">
+            <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">PERSONA DISTRIBUTION</div>
             <PersonaBarChart data={overview?.by_persona || []} />
           </div>
         </div>
 
         {/* Filters */}
-        <div className="cyber-card p-2 mb-3 flex items-center gap-2 flex-wrap">
+        <div className="cyber-card p-3 mb-3 flex items-center gap-3 flex-wrap">
           {/* Search */}
-          <div className="relative flex-1 min-w-[150px] max-w-[200px]">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-cyan-500/40" />
+          <div className="relative flex-1 min-w-[150px] max-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Search..."
-              className="cyber-input w-full pl-7 pr-2 py-1"
+              className="cyber-input w-full pl-9 pr-3 py-2"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           {/* Time */}
-          <div className="flex border border-cyan-500/20">
+          <div className="flex">
             {TIME_FILTERS.map(tf => (
               <button
                 key={tf.value}
@@ -225,54 +225,54 @@ export default function DashboardPage() {
           {/* Signal Type */}
           <div className="relative">
             <select
-              className="cyber-select pr-6"
+              className="cyber-select pr-7"
               value={signalTypeFilter}
               onChange={(e) => setSignalTypeFilter(e.target.value)}
             >
-              <option value="">ALL TYPES</option>
-              <option value="webflow_content_download">GATED</option>
-              <option value="webflow_demo_request">DEMO</option>
-              <option value="webflow_contact">CONTACT</option>
-              <option value="webflow_newsletter">NEWS</option>
-              <option value="webflow_popup">POPUP</option>
+              <option value="">All Types</option>
+              <option value="webflow_content_download">Gated</option>
+              <option value="webflow_demo_request">Demo</option>
+              <option value="webflow_contact">Contact</option>
+              <option value="webflow_newsletter">Newsletter</option>
+              <option value="webflow_popup">Popup</option>
             </select>
-            <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-cyan-500/40 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
           </div>
 
           {/* Tier */}
           <div className="relative">
             <select
-              className="cyber-select pr-6"
+              className="cyber-select pr-7"
               value={tierFilter}
               onChange={(e) => setTierFilter(e.target.value)}
             >
-              <option value="">ALL TIERS</option>
+              <option value="">All Tiers</option>
               <option value="P0">P0</option>
               <option value="P1">P1</option>
               <option value="P2">P2</option>
               <option value="P3">P3</option>
             </select>
-            <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-cyan-500/40 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
           </div>
 
           {/* Source */}
           {sources.length > 0 && (
             <div className="relative">
               <select
-                className="cyber-select pr-6"
+                className="cyber-select pr-7"
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
               >
-                <option value="">ALL SRC</option>
+                <option value="">All Sources</option>
                 {sources.map(s => (
-                  <option key={s} value={s}>{s.toUpperCase()}</option>
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-cyan-500/40 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
             </div>
           )}
 
-          <div className="ml-auto text-[9px] text-cyan-500/50 font-mono">{filteredLeads.length} RECORDS</div>
+          <div className="ml-auto text-[10px] text-gray-500 font-mono">{filteredLeads.length} records</div>
         </div>
 
         {/* Table */}
@@ -293,8 +293,8 @@ export default function DashboardPage() {
               <tbody>
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-cyan-500/30 font-cyber text-xs">
-                      NO DATA FOUND
+                    <td colSpan={7} className="text-center py-8 text-gray-400 font-cyber text-xs">
+                      No data found
                     </td>
                   </tr>
                 ) : (
@@ -311,44 +311,44 @@ export default function DashboardPage() {
                         className="cyber-row cursor-pointer"
                         onClick={() => setSelectedLead(lead)}
                       >
-                        <td className="text-cyan-500/50 text-[10px] font-mono">
+                        <td className="text-gray-500 text-[11px] font-mono">
                           {format(parseISO(lead.inbox_entered_at), 'MM/dd HH:mm')}
                         </td>
                         <td>
                           <span className="signal-badge">{signalLabel}</span>
                         </td>
                         <td>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <div>
-                              <div className="text-cyan-100 text-[11px] truncate max-w-[100px]">
+                              <div className="text-gray-800 text-[12px] truncate max-w-[120px]">
                                 {lead.first_name || lead.last_name
                                   ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                   : lead.email?.split('@')[0]}
                               </div>
-                              <div className="text-cyan-500/40 text-[9px] truncate max-w-[100px]">
+                              <div className="text-gray-500 text-[10px] truncate max-w-[120px]">
                                 {lead.title || lead.detected_persona || '-'}
                               </div>
                             </div>
                             {lead.has_research && (
-                              <Brain className="w-3 h-3 text-neon-purple shrink-0" />
+                              <Brain className="w-3.5 h-3.5 text-neon-purple shrink-0" />
                             )}
                           </div>
                         </td>
                         <td>
-                          <div className="text-cyan-100/80 text-[11px] truncate max-w-[90px]">
-                            {isPersonal ? <span className="text-cyan-500/30 italic">personal</span> : (lead.company_name || '-')}
+                          <div className="text-gray-700 text-[12px] truncate max-w-[100px]">
+                            {isPersonal ? <span className="text-gray-400 italic text-[11px]">personal</span> : (lead.company_name || '-')}
                           </div>
                         </td>
                         <td>
-                          <div className="text-cyan-500/60 text-[10px] truncate max-w-[100px]" title={lead.content_name}>
+                          <div className="text-gray-500 text-[11px] truncate max-w-[120px]" title={lead.content_name}>
                             {lead.content_name || '-'}
                           </div>
                         </td>
                         <td className="text-center">
-                          <span className="font-cyber text-sm text-cyan-100 score-display">{lead.total_score}</span>
+                          <span className="font-cyber text-sm text-gray-800 score-display">{lead.total_score}</span>
                         </td>
                         <td className="text-center">
-                          <span className={`inline-block px-2 py-0.5 text-[9px] font-cyber font-bold ${tierClass}`}>
+                          <span className={`inline-block px-2.5 py-1 text-[10px] font-cyber font-bold rounded ${tierClass}`}>
                             {lead.signal_tier}
                           </span>
                         </td>

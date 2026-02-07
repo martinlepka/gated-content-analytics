@@ -11,8 +11,8 @@ interface TrendChartProps {
 export function TrendChart({ data }: TrendChartProps) {
   if (data.length === 0) {
     return (
-      <div className="h-[180px] flex items-center justify-center text-cyan-500/30 font-cyber text-[10px] tracking-wider">
-        NO TREND DATA
+      <div className="h-[180px] flex items-center justify-center text-gray-400 font-cyber text-[10px] tracking-wider">
+        No trend data
       </div>
     )
   }
@@ -28,41 +28,40 @@ export function TrendChart({ data }: TrendChartProps) {
         <AreaChart data={formattedData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
           <defs>
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00ffff" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#00ffff" stopOpacity={0} />
+              <stop offset="0%" stopColor="#0891b2" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#0891b2" stopOpacity={0} />
             </linearGradient>
           </defs>
           <XAxis
             dataKey="dateFormatted"
-            tick={{ fontSize: 8, fill: 'rgba(0,255,255,0.4)', fontFamily: 'JetBrains Mono' }}
+            tick={{ fontSize: 10, fill: '#6b7280', fontFamily: 'JetBrains Mono' }}
             tickLine={false}
-            axisLine={{ stroke: 'rgba(0,255,255,0.15)' }}
+            axisLine={{ stroke: '#e5e7eb' }}
             interval="preserveStartEnd"
           />
           <YAxis
-            tick={{ fontSize: 8, fill: 'rgba(0,255,255,0.4)', fontFamily: 'JetBrains Mono' }}
+            tick={{ fontSize: 10, fill: '#6b7280', fontFamily: 'JetBrains Mono' }}
             tickLine={false}
             axisLine={false}
-            width={25}
+            width={30}
           />
           <Tooltip
             contentStyle={{
-              background: 'rgba(5,10,20,0.95)',
-              border: '1px solid rgba(0,255,255,0.3)',
-              borderRadius: '2px',
-              boxShadow: '0 0 20px rgba(0,255,255,0.2)',
-              padding: '8px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              padding: '8px 12px',
             }}
-            labelStyle={{ color: 'rgba(0,255,255,0.6)', fontSize: 9, fontFamily: 'JetBrains Mono' }}
-            itemStyle={{ color: '#00ffff', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+            labelStyle={{ color: '#374151', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+            itemStyle={{ color: '#0891b2', fontSize: 12, fontFamily: 'JetBrains Mono' }}
           />
           <Area
             type="monotone"
             dataKey="downloads"
-            stroke="#00ffff"
+            stroke="#0891b2"
             strokeWidth={2}
             fill="url(#areaGradient)"
-            style={{ filter: 'drop-shadow(0 0 4px rgba(0,255,255,0.5))' }}
           />
         </AreaChart>
       </ResponsiveContainer>

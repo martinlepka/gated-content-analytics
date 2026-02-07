@@ -6,19 +6,19 @@
 
 @layer base {
   :root {
-    --background: 230 25% 4%;
-    --foreground: 180 100% 90%;
-    --card: 230 30% 7%;
-    --card-foreground: 180 100% 90%;
-    --primary: 180 100% 50%;
-    --primary-foreground: 230 25% 4%;
-    --secondary: 280 100% 60%;
-    --muted: 230 20% 12%;
-    --muted-foreground: 180 30% 45%;
-    --border: 180 60% 15%;
-    --input: 230 20% 10%;
-    --ring: 180 100% 50%;
-    --radius: 2px;
+    --background: 210 20% 98%;
+    --foreground: 220 20% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 20%;
+    --primary: 180 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 280 80% 55%;
+    --muted: 210 15% 94%;
+    --muted-foreground: 220 10% 50%;
+    --border: 210 20% 88%;
+    --input: 210 15% 96%;
+    --ring: 180 100% 40%;
+    --radius: 4px;
   }
 }
 
@@ -32,26 +32,21 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'JetBrains Mono', monospace;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 255, 255, 0.08) 0%, transparent 50%),
-      linear-gradient(180deg, #050810 0%, #0a0a12 50%, #080510 100%);
+    background: linear-gradient(180deg, hsl(210 20% 98%) 0%, hsl(210 25% 96%) 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
 }
 
-/* Scanlines */
+/* Subtle grid pattern */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 1px,
-    rgba(0, 0, 0, 0.15) 1px,
-    rgba(0, 0, 0, 0.15) 2px
-  );
+  background-image:
+    linear-gradient(rgba(0, 150, 150, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 150, 150, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
   pointer-events: none;
   z-index: 10000;
 }
@@ -65,45 +60,46 @@ body::after {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Neon glow text */
+/* Text emphasis (light theme - no glow) */
 .text-glow {
-  text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+  font-weight: 700;
 }
 
 .text-glow-sm {
-  text-shadow: 0 0 4px currentColor;
+  font-weight: 600;
 }
 
-/* Neon colors */
-.text-neon-cyan { color: #00ffff; }
-.text-neon-magenta { color: #ff0080; }
-.text-neon-purple { color: #9933ff; }
-.text-neon-green { color: #00ff88; }
-.text-neon-orange { color: #ff8800; }
-.text-neon-yellow { color: #ffff00; }
+/* Accent colors (light theme) */
+.text-neon-cyan { color: #0891b2; }
+.text-neon-magenta { color: #db2777; }
+.text-neon-purple { color: #7c3aed; }
+.text-neon-green { color: #059669; }
+.text-neon-orange { color: #ea580c; }
+.text-neon-yellow { color: #ca8a04; }
 
-.bg-neon-cyan { background-color: #00ffff; }
-.bg-neon-magenta { background-color: #ff0080; }
-.bg-neon-purple { background-color: #9933ff; }
-.bg-neon-green { background-color: #00ff88; }
+.bg-neon-cyan { background-color: #0891b2; }
+.bg-neon-magenta { background-color: #db2777; }
+.bg-neon-purple { background-color: #7c3aed; }
+.bg-neon-green { background-color: #059669; }
 
 /* Cyber card */
 .cyber-card {
-  background: linear-gradient(135deg, rgba(0, 20, 30, 0.8) 0%, rgba(10, 5, 20, 0.8) 100%);
-  border: 1px solid rgba(0, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
+  background: white;
+  border: 1px solid hsl(210 20% 90%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .cyber-card:hover {
-  border-color: rgba(0, 255, 255, 0.3);
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1), inset 0 0 20px rgba(0, 255, 255, 0.02);
+  border-color: #0891b2;
+  box-shadow: 0 2px 8px rgba(8, 145, 178, 0.1);
 }
 
 /* Cyber stat with shimmer */
 .cyber-stat {
   position: relative;
-  background: linear-gradient(135deg, rgba(0, 255, 255, 0.03) 0%, rgba(153, 51, 255, 0.03) 100%);
-  border: 1px solid rgba(0, 255, 255, 0.2);
+  background: white;
+  border: 1px solid hsl(210 20% 90%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   overflow: hidden;
 }
 
@@ -114,7 +110,7 @@ body::after {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(8, 145, 178, 0.05), transparent);
   animation: shimmer 4s infinite;
 }
 
@@ -124,193 +120,192 @@ body::after {
 
 /* Cyber table */
 .cyber-table {
-  background: rgba(0, 5, 10, 0.6);
-  border: 1px solid rgba(0, 255, 255, 0.15);
+  background: white;
+  border: 1px solid hsl(210 20% 90%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .cyber-table thead {
-  background: linear-gradient(90deg, rgba(0, 255, 255, 0.08) 0%, rgba(153, 51, 255, 0.08) 50%, rgba(255, 0, 128, 0.05) 100%);
+  background: hsl(210 20% 97%);
 }
 
 .cyber-table th {
   font-family: 'Orbitron', sans-serif;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.15em;
-  color: rgba(0, 255, 255, 0.7);
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+  letter-spacing: 0.1em;
+  color: hsl(220 10% 45%);
+  padding: 10px 12px;
+  border-bottom: 1px solid hsl(210 20% 90%);
 }
 
 .cyber-row {
   transition: all 0.1s ease;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.05);
+  border-bottom: 1px solid hsl(210 20% 94%);
 }
 
 .cyber-row:hover {
-  background: linear-gradient(90deg, rgba(0, 255, 255, 0.06) 0%, rgba(153, 51, 255, 0.04) 100%);
+  background: hsl(210 30% 97%);
 }
 
 .cyber-row td {
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 /* Tier badges */
 .tier-p0 {
-  background: rgba(255, 0, 128, 0.2);
-  border: 1px solid #ff0080;
-  color: #ff0080;
-  box-shadow: 0 0 8px rgba(255, 0, 128, 0.5), inset 0 0 8px rgba(255, 0, 128, 0.1);
-  animation: pulse-p0 2s ease-in-out infinite;
+  background: #fdf2f8;
+  border: 1px solid #db2777;
+  color: #db2777;
+  font-weight: 700;
 }
 
 .tier-p1 {
-  background: rgba(255, 136, 0, 0.15);
-  border: 1px solid #ff8800;
-  color: #ff8800;
-  box-shadow: 0 0 6px rgba(255, 136, 0, 0.4);
+  background: #fff7ed;
+  border: 1px solid #ea580c;
+  color: #ea580c;
+  font-weight: 700;
 }
 
 .tier-p2 {
-  background: rgba(0, 255, 255, 0.1);
-  border: 1px solid rgba(0, 255, 255, 0.5);
-  color: #00ffff;
-  box-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
+  background: #ecfeff;
+  border: 1px solid #0891b2;
+  color: #0891b2;
+  font-weight: 700;
 }
 
 .tier-p3 {
-  background: rgba(80, 80, 80, 0.2);
-  border: 1px solid rgba(100, 100, 100, 0.4);
-  color: #666;
-}
-
-@keyframes pulse-p0 {
-  0%, 100% { box-shadow: 0 0 8px rgba(255, 0, 128, 0.5), inset 0 0 8px rgba(255, 0, 128, 0.1); }
-  50% { box-shadow: 0 0 15px rgba(255, 0, 128, 0.7), 0 0 25px rgba(255, 0, 128, 0.3), inset 0 0 8px rgba(255, 0, 128, 0.15); }
+  background: hsl(210 20% 96%);
+  border: 1px solid hsl(210 15% 80%);
+  color: hsl(220 10% 50%);
+  font-weight: 600;
 }
 
 /* Signal type badge */
 .signal-badge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 500;
-  padding: 2px 5px;
-  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  background: rgba(0, 255, 255, 0.08);
-  border: 1px solid rgba(0, 255, 255, 0.25);
-  color: rgba(0, 255, 255, 0.8);
+  background: hsl(210 30% 96%);
+  border: 1px solid hsl(210 20% 88%);
+  color: hsl(220 15% 45%);
 }
 
 /* Cyber input */
 .cyber-input {
-  background: rgba(0, 5, 15, 0.6);
-  border: 1px solid rgba(0, 255, 255, 0.2);
-  color: #00ffff;
+  background: white;
+  border: 1px solid hsl(210 20% 88%);
+  color: hsl(220 20% 25%);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 6px 10px;
+  font-size: 12px;
+  padding: 8px 12px;
   transition: all 0.15s ease;
 }
 
 .cyber-input::placeholder {
-  color: rgba(0, 255, 255, 0.3);
+  color: hsl(220 10% 60%);
 }
 
 .cyber-input:focus {
-  border-color: rgba(0, 255, 255, 0.6);
-  box-shadow: 0 0 15px rgba(0, 255, 255, 0.15), inset 0 0 10px rgba(0, 255, 255, 0.03);
+  border-color: #0891b2;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
   outline: none;
 }
 
 /* Cyber select */
 .cyber-select {
-  background: rgba(0, 5, 15, 0.6);
-  border: 1px solid rgba(0, 255, 255, 0.2);
-  color: rgba(0, 255, 255, 0.9);
+  background: white;
+  border: 1px solid hsl(210 20% 88%);
+  color: hsl(220 20% 25%);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  padding: 5px 24px 5px 8px;
+  font-size: 11px;
+  padding: 6px 28px 6px 10px;
   cursor: pointer;
   appearance: none;
 }
 
 .cyber-select:focus {
-  border-color: rgba(0, 255, 255, 0.5);
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+  border-color: #0891b2;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
   outline: none;
 }
 
 .cyber-select option {
-  background: #0a0a15;
-  color: #00ffff;
+  background: white;
+  color: hsl(220 20% 25%);
 }
 
 /* Cyber toggle */
 .cyber-toggle {
-  background: rgba(0, 5, 15, 0.6);
-  border: 1px solid rgba(0, 255, 255, 0.15);
-  color: rgba(0, 255, 255, 0.5);
+  background: white;
+  border: 1px solid hsl(210 20% 88%);
+  border-right: none;
+  color: hsl(220 10% 50%);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 4px 8px;
+  padding: 6px 10px;
   transition: all 0.1s ease;
 }
 
+.cyber-toggle:last-child {
+  border-right: 1px solid hsl(210 20% 88%);
+}
+
 .cyber-toggle:hover {
-  background: rgba(0, 255, 255, 0.05);
-  color: rgba(0, 255, 255, 0.8);
+  background: hsl(210 30% 97%);
+  color: hsl(220 15% 35%);
 }
 
 .cyber-toggle.active {
-  background: rgba(0, 255, 255, 0.15);
-  border-color: rgba(0, 255, 255, 0.5);
-  color: #00ffff;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+  background: #0891b2;
+  border-color: #0891b2;
+  color: white;
 }
 
 /* Cyber modal */
 .cyber-modal {
-  background: linear-gradient(135deg, rgba(5, 10, 20, 0.98) 0%, rgba(15, 5, 25, 0.98) 100%);
-  border: 1px solid rgba(0, 255, 255, 0.25);
-  box-shadow:
-    0 0 40px rgba(0, 255, 255, 0.15),
-    0 0 80px rgba(153, 51, 255, 0.08),
-    inset 0 1px 0 rgba(0, 255, 255, 0.1);
+  background: white;
+  border: 1px solid hsl(210 20% 88%);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
+  background: hsl(210 20% 95%);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(0, 255, 255, 0.3), rgba(153, 51, 255, 0.3));
+  background: hsl(210 15% 75%);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(0, 255, 255, 0.5), rgba(153, 51, 255, 0.5));
+  background: hsl(210 15% 65%);
 }
 
 /* Selection */
 ::selection {
-  background: rgba(0, 255, 255, 0.25);
-  color: #fff;
+  background: rgba(8, 145, 178, 0.2);
+  color: hsl(220 20% 20%);
 }
 
 /* Loading */
 .cyber-loader {
   width: 30px;
   height: 30px;
-  border: 2px solid rgba(0, 255, 255, 0.1);
-  border-top-color: #00ffff;
+  border: 2px solid hsl(210 20% 90%);
+  border-top-color: #0891b2;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -327,9 +322,9 @@ body::after {
 
 /* Header */
 .cyber-header {
-  background: linear-gradient(180deg, rgba(0, 10, 20, 0.9) 0%, rgba(0, 5, 15, 0.7) 100%);
-  border-bottom: 1px solid rgba(0, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
+  background: white;
+  border-bottom: 1px solid hsl(210 20% 90%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 /* Nav link */
@@ -337,31 +332,30 @@ body::after {
   font-family: 'Orbitron', sans-serif;
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 6px 12px;
+  padding: 8px 14px;
   transition: all 0.15s ease;
+  color: hsl(220 10% 55%);
 }
 
 .nav-link:hover {
-  color: #00ffff;
-  text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+  color: #0891b2;
 }
 
 .nav-link.active {
-  color: #00ffff;
-  border-bottom: 2px solid #00ffff;
-  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+  color: #0891b2;
+  border-bottom: 2px solid #0891b2;
 }
 
 /* Chart styling */
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
-  stroke: rgba(0, 255, 255, 0.1);
+  stroke: hsl(210 20% 92%);
 }
 
 .recharts-text {
-  fill: rgba(0, 255, 255, 0.5);
+  fill: hsl(220 10% 55%);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
 }
