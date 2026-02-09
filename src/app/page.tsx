@@ -5,7 +5,7 @@ import { fetchGatedContentAPI, OverviewData, TrendData, Lead, SIGNAL_TYPE_LABELS
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
-import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
@@ -35,6 +35,9 @@ export default function DashboardPage() {
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+
+  // Help panel
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -203,6 +206,13 @@ export default function DashboardPage() {
             <Link href="/" className="nav-link active">Overview</Link>
             <Link href="/content" className="nav-link">Content</Link>
             <Link href="/leads" className="nav-link">Leads</Link>
+            <button
+              onClick={() => setShowHelp(true)}
+              className="ml-2 p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-neon-cyan transition-colors"
+              title="Help & Definitions"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
           </nav>
         </div>
       </header>
@@ -303,6 +313,8 @@ export default function DashboardPage() {
               <option value="webflow_contact">Contact</option>
               <option value="webflow_newsletter">Newsletter</option>
               <option value="webflow_popup">Popup</option>
+              <option value="webflow_webinar_reg">Webinar</option>
+              <option value="webflow_event_reg">Event</option>
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
           </div>
@@ -375,7 +387,7 @@ export default function DashboardPage() {
                   <th className="text-left cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('company')}>
                     <span className="flex items-center gap-1">COMPANY <SortIcon column="company" /></span>
                   </th>
-                  <th className="text-left min-w-[180px]">CONTENT</th>
+                  <th className="text-left w-[200px] max-w-[200px]">CONTENT</th>
                   <th className="text-left w-[70px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('source')}>
                     <span className="flex items-center gap-1">SOURCE <SortIcon column="source" /></span>
                   </th>
@@ -462,8 +474,8 @@ export default function DashboardPage() {
                             {isPersonal ? <span className="text-gray-400 italic text-[10px]">personal</span> : (lead.company_name || '-')}
                           </div>
                         </td>
-                        <td>
-                          <div className="text-gray-600 text-[11px]" title={lead.content_name}>
+                        <td className="max-w-[200px]">
+                          <div className="text-gray-600 text-[11px] truncate" title={lead.content_name}>
                             {lead.content_name || '-'}
                           </div>
                         </td>
@@ -497,6 +509,126 @@ export default function DashboardPage() {
 
       {selectedLead && (
         <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
+      )}
+
+      {/* Help Panel */}
+      {showHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="font-cyber text-lg text-neon-cyan tracking-wider">METRICS & DEFINITIONS</h2>
+              <button onClick={() => setShowHelp(false)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6 text-sm">
+              {/* Scoring */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-neon-purple" /> Scoring (0-220)
+                </h3>
+                <p className="text-gray-600 mb-2">
+                  <strong>Not Salesforce scoring.</strong> This is ICP Fit scoring based on:
+                </p>
+                <ul className="list-disc list-inside text-gray-500 space-y-1 ml-2">
+                  <li><strong>ICP Fit (0-100):</strong> Company size, age, industry, tech stack, multi-entity structure</li>
+                  <li><strong>Why Now (0-80):</strong> Executive changes, M&A, layoffs, transformation signals</li>
+                  <li><strong>Intent (0-40):</strong> Website engagement, 3rd party intent data (G2, Lusha)</li>
+                </ul>
+                <p className="text-gray-500 mt-2 text-xs">
+                  Higher score = better fit for Keboola Financial Intelligence. Gated content alone gives ~10-20 intent points.
+                </p>
+              </div>
+
+              {/* Tiers */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <Target className="w-4 h-4 text-neon-magenta" /> Priority Tiers (P0-P3)
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-3">
+                    <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p0">P0</span>
+                    <span className="text-gray-600">Immediate action - Total ≥150 AND ICP ≥60 AND WhyNow ≥30. Typically requires multiple strong signals.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p1">P1</span>
+                    <span className="text-gray-600">High priority - Total ≥100 OR (ICP ≥70 AND WhyNow ≥20). Good ICP fit with some buying signals.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p2">P2</span>
+                    <span className="text-gray-600">Standard follow-up - Total ≥60. Moderate fit, worth nurturing.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p3">P3</span>
+                    <span className="text-gray-600">Nurture only - Total &lt;60. Low fit or insufficient data. Most gated content downloads start here.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-neon-cyan" /> Lead Status
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-3">
+                    <span className="text-neon-cyan font-semibold text-xs w-16">NEW</span>
+                    <span className="text-gray-600">Fresh lead, not yet reviewed by sales. <strong>No action needed from you</strong> - SDR team will triage.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-neon-orange font-semibold text-xs w-16">WORKING</span>
+                    <span className="text-gray-600">Sales is actively researching/qualifying this lead.</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-neon-green font-semibold text-xs w-16">DONE</span>
+                    <span className="text-gray-600">Converted to pipeline opportunity or qualified MQL. Success!</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-gray-400 font-semibold text-xs w-16">REJECTED</span>
+                    <span className="text-gray-600">Disqualified - personal email, competitor, not ICP fit, or duplicate.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Types */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-neon-cyan" /> Signal Types
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 border border-pink-200">Demo</span>
+                    <span className="text-gray-500">Demo request - highest intent</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 border border-cyan-200">Gated</span>
+                    <span className="text-gray-500">Content download (ebook, etc)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">Webinar</span>
+                    <span className="text-gray-500">Webinar registration</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">Event</span>
+                    <span className="text-gray-500">Event registration</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200">Contact</span>
+                    <span className="text-gray-500">Contact form</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200">Newsletter</span>
+                    <span className="text-gray-500">Newsletter signup</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-400 pt-4 border-t border-gray-100">
+                Questions? Contact <a href="mailto:martin.lepka@keboola.com" className="text-neon-cyan hover:underline">martin.lepka@keboola.com</a>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
