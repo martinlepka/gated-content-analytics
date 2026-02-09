@@ -6,15 +6,16 @@ This file provides guidance to Claude Code when working with the Gated Content A
 
 **Gated Content Analytics** is a standalone Next.js dashboard for agencies to view gated content performance, lead quality, and persona distribution. It uses the same Supabase GTM project and ICP scoring framework as the main GTM app.
 
-## Current Status (2026-02-07)
+## Current Status (2026-02-09)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
 | **Edge Function** | Deployed | `gated-content-api` on Supabase |
 | **Frontend** | Deployed | https://gated-content-analytics.vercel.app/ |
 | **GitHub** | Active | https://github.com/martinlepka/gated-content-analytics |
-| **Data** | 23 downloads | From `inbox_leads` table |
-| **AI Research Trigger** | Active | Added to `webflow-webhook` |
+| **Data** | Live sync | From `inbox_leads` table (shared with GTM app) |
+| **Status Sync** | ✅ Active | Statuses synced with GTM Inbox |
+| **AI Research** | ✅ Active | Auto-triggered on new leads |
 
 ---
 
@@ -159,21 +160,32 @@ Leads are scored automatically when created:
 | **P2** | Total >= 60 | Standard follow-up |
 | **P3** | Total < 60 | Nurture only |
 
-### 6. Lead Lifecycle
+### 6. Lead Lifecycle (Synced with GTM App)
 
-Records are **never deleted** - status changes tracked:
+Records are **never deleted** - status changes tracked. Statuses are **synced with GTM Inbox**.
 
 ```
-new → working → done (converted)
-               ↘ rejected (disqualified)
+new → working → done (accepted to Discovery/TAL)
+    → researching ↗    ↘ rejected (disqualified with reason)
 ```
 
-| Status | Display | Meaning |
-|--------|---------|---------|
-| `new` | **New** (blue) | Fresh lead, unprocessed |
-| `working` | **In Progress** (yellow) | Sales reviewing |
-| `done` | **Converted** (green) | Moved to pipeline |
-| `rejected` | **Disqualified** (gray) | Not ICP fit |
+| DB Status | rejection_reason | Display | Meaning |
+|-----------|------------------|---------|---------|
+| `new` | - | **NEW** (cyan) | Fresh lead in Inbox, unreviewed |
+| `working` | - | **WORKING** (orange) | Sales reviewing in GTM app |
+| `researching` | - | **RESEARCH** (purple) | AI research in progress |
+| `done` | `auto_linked_to_discovery` | **ACCEPTED** (green) | ✅ Moved to Discovery account |
+| `done` | `auto_linked_to_tal:xxx` | **ACCEPTED** (green) | ✅ Moved to TAL |
+| `done` | `auto_linked_existing` | **MERGED** (green) | Auto-linked to existing account |
+| `done` | null | **DONE** (green) | Processed manually |
+| `rejected` | `not_icp` | **REJECTED** + "Not ICP" | Not ideal customer profile |
+| `rejected` | `current_customer` | **REJECTED** + "Customer" | Already a customer |
+| `rejected` | `competitor` | **REJECTED** + "Competitor" | Competitor company |
+| `rejected` | `keboola_partner` | **REJECTED** + "Partner" | Partner company |
+| `rejected` | `spam_invalid` | **REJECTED** + "Invalid" | Invalid/spam submission |
+| `rejected` | `gmail.com` etc | **REJECTED** + "Personal Email" | Excluded domain |
+
+**Note:** The `rejection_reason` field is used both for actual rejections AND for tracking where accepted leads went (auto_linked_to_*).
 
 ---
 
@@ -310,18 +322,44 @@ npx supabase functions deploy gated-content-api --project-ref jhglcgljsporzelhsv
 
 ## Features Implemented
 
-- Overview dashboard with metrics cards
+### Dashboard
+- Overview dashboard with metrics cards (Signals, P0/P1, Accepted, Avg Score, Top Persona)
 - Download trend chart (30 days)
 - Persona breakdown chart
 - Full downloads table with sortable columns
 - Column sorting (click header to toggle asc/desc)
-- Status filter dropdown
+
+### Filtering
+- Time filter (7D, 14D, 30D, ALL)
+- Signal type filter (Gated, Demo, Contact, Newsletter, Popup, **Webinar**, **Event**)
+- Tier filter (P0, P1, P2, P3)
+- Source filter (dynamic from data)
+- Status filter (New, Working, Researching, Accepted/Done, Rejected)
+- Search by name, email, company, content
+
+### Table Display
 - SOURCE column showing utm_source
-- Color-coded TYPE badges (Demo=pink, Gated=cyan, Contact=orange, etc.)
+- CONTENT column with truncation (max 200px to prevent overflow)
+- Color-coded TYPE badges (Demo=pink, Gated=cyan, Webinar=green, Event=blue, etc.)
+- **Status synced with GTM app** (NEW/WORKING/RESEARCH/ACCEPTED/MERGED/REJECTED)
+- **Rejection reason shown in table** when status is rejected
 - Clickable rows → Lead Detail Modal
-- Modal with AI research display
-- Rejection reason display in modal (when status=rejected)
-- Prominent campaign name display in modal
+
+### Lead Detail Modal
+- Score breakdown (Total, ICP Fit, Intent, Grade, Status)
+- **Rejection reason box** (when status=rejected)
+- Contact & Company info
+- Attribution with prominent campaign name
+- AI Research display (company overview, transformation signals, why now, tech stack, finance leaders, news)
+
+### Help Panel
+- Click `?` icon in header to open
+- Explains scoring model (ICP Fit + Why Now + Intent = 0-220)
+- Explains priority tiers (P0/P1/P2/P3 thresholds)
+- Explains all status meanings with GTM sync info
+- Explains signal types with color badges
+
+### Other
 - Content breakdown page (`/content`)
 - Leads list page (`/leads`) with filters
 - Password protection (session-based)
@@ -337,6 +375,15 @@ npx supabase functions deploy gated-content-api --project-ref jhglcgljsporzelhsv
 ---
 
 ## Changelog
+
+### 2026-02-09
+- **Status sync with GTM app**: Statuses now match GTM Inbox (NEW/WORKING/RESEARCH/ACCEPTED/MERGED/REJECTED)
+- **Rejection reason in table**: Shows abbreviated reason (Not ICP, Customer, Personal Email, etc.)
+- **Help panel**: Added `?` button explaining scoring, tiers, and status meanings
+- **Webinar/Event filters**: Added to signal type filter dropdown
+- **Content column fix**: Fixed overflow by adding max-width and truncation
+- **Stats card**: Changed "Converted" to "Accepted" with correct counting logic
+- **Modal status sync**: Updated to show ACCEPTED instead of CONVERTED
 
 ### 2026-02-07 (Update 3)
 - Added password protection (AuthGate component)
