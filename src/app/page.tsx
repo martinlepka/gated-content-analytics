@@ -161,9 +161,17 @@ export default function DashboardPage() {
     const p0 = filteredLeads.filter(l => l.signal_tier === 'P0').length
     const p1 = filteredLeads.filter(l => l.signal_tier === 'P1').length
     const highQuality = p0 + p1
-    const converted = filteredLeads.filter(l => l.action_status === 'done').length
+    // Count accepted leads (done + auto_linked to discovery/TAL)
+    const accepted = filteredLeads.filter(l =>
+      l.action_status === 'done' &&
+      (l.rejection_reason?.includes('auto_linked_to_discovery') ||
+       l.rejection_reason?.includes('auto_linked_to_tal') ||
+       l.rejection_reason?.includes('auto_linked_existing') ||
+       !l.rejection_reason)
+    ).length
+    const rejected = filteredLeads.filter(l => l.action_status === 'rejected').length
     const avgScore = total > 0 ? Math.round(filteredLeads.reduce((sum, l) => sum + (l.total_score || 0), 0) / total) : 0
-    return { total, p0, p1, highQuality, converted, avgScore }
+    return { total, p0, p1, highQuality, accepted, rejected, avgScore }
   }, [filteredLeads])
 
   if (loading) {
@@ -238,10 +246,10 @@ export default function DashboardPage() {
           <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
               <TrendingUp className="w-3.5 h-3.5 text-neon-green" />
-              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">CONVERTED</span>
+              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">ACCEPTED</span>
             </div>
-            <div className="font-cyber text-2xl text-neon-green text-glow score-display">{stats.converted}</div>
-            <div className="text-[10px] text-gray-400">{stats.total > 0 ? Math.round((stats.converted / stats.total) * 100) : 0}%</div>
+            <div className="font-cyber text-2xl text-neon-green text-glow score-display">{stats.accepted}</div>
+            <div className="text-[10px] text-gray-400">{stats.total > 0 ? Math.round((stats.accepted / stats.total) * 100) : 0}%</div>
           </div>
           <div className="cyber-stat p-4">
             <div className="flex items-center gap-2 mb-1">
@@ -360,9 +368,10 @@ export default function DashboardPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="">All Status</option>
-              <option value="new">New</option>
+              <option value="new">New (Unreviewed)</option>
               <option value="working">Working</option>
-              <option value="done">Done</option>
+              <option value="researching">Researching</option>
+              <option value="done">Accepted/Done</option>
               <option value="rejected">Rejected</option>
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
@@ -429,12 +438,49 @@ export default function DashboardPage() {
                       signalType === 'webflow_event_reg' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                       'bg-gray-100 text-gray-600 border-gray-200'
 
-                    // Status colors
-                    const statusClass =
-                      lead.action_status === 'new' ? 'text-neon-cyan' :
-                      lead.action_status === 'working' ? 'text-neon-orange' :
-                      lead.action_status === 'done' ? 'text-neon-green' :
-                      'text-gray-400'
+                    // Determine display status based on action_status + rejection_reason
+                    const getDisplayStatus = () => {
+                      if (lead.action_status === 'done') {
+                        // Check rejection_reason for accepted leads
+                        if (lead.rejection_reason?.includes('auto_linked_to_discovery') ||
+                            lead.rejection_reason?.includes('auto_linked_to_tal')) {
+                          return { label: 'ACCEPTED', class: 'text-neon-green', bgClass: 'bg-green-100' }
+                        }
+                        if (lead.rejection_reason?.includes('auto_linked_existing')) {
+                          return { label: 'MERGED', class: 'text-neon-green', bgClass: 'bg-green-100' }
+                        }
+                        return { label: 'DONE', class: 'text-neon-green', bgClass: 'bg-green-100' }
+                      }
+                      if (lead.action_status === 'rejected') {
+                        return { label: 'REJECTED', class: 'text-red-500', bgClass: 'bg-red-50' }
+                      }
+                      if (lead.action_status === 'working') {
+                        return { label: 'WORKING', class: 'text-neon-orange', bgClass: 'bg-orange-100' }
+                      }
+                      if (lead.action_status === 'researching') {
+                        return { label: 'RESEARCH', class: 'text-neon-purple', bgClass: 'bg-purple-100' }
+                      }
+                      return { label: 'NEW', class: 'text-neon-cyan', bgClass: 'bg-cyan-100' }
+                    }
+                    const displayStatus = getDisplayStatus()
+
+                    // Format rejection reason for display
+                    const getShortRejectionReason = () => {
+                      if (!lead.rejection_reason) return null
+                      const reason = lead.rejection_reason
+                      if (reason.includes('not_icp')) return 'Not ICP'
+                      if (reason.includes('current_customer')) return 'Customer'
+                      if (reason.includes('competitor')) return 'Competitor'
+                      if (reason.includes('keboola_partner')) return 'Partner'
+                      if (reason.includes('spam_invalid')) return 'Invalid'
+                      if (reason.includes('duplicate')) return 'Duplicate'
+                      if (reason.includes('gmail') || reason.includes('yahoo') || reason.includes('hotmail')) return 'Personal Email'
+                      if (reason.includes('Excluded domain')) return 'Excluded'
+                      if (reason.includes('SF Account Type')) return 'SF Customer'
+                      if (reason.includes('auto_linked')) return null // Not a real rejection
+                      return reason.length > 15 ? reason.substring(0, 15) + '...' : reason
+                    }
+                    const shortReason = getShortRejectionReason()
 
                     return (
                       <tr
@@ -493,9 +539,16 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td className="text-center">
-                          <span className={`text-[9px] font-semibold uppercase ${statusClass}`}>
-                            {lead.action_status}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className={`text-[9px] font-semibold uppercase ${displayStatus.class}`}>
+                              {displayStatus.label}
+                            </span>
+                            {lead.action_status === 'rejected' && shortReason && (
+                              <span className="text-[8px] text-gray-400 truncate max-w-[60px]" title={lead.rejection_reason || ''}>
+                                {shortReason}
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -568,24 +621,32 @@ export default function DashboardPage() {
               {/* Status */}
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-neon-cyan" /> Lead Status
+                  <Activity className="w-4 h-4 text-neon-cyan" /> Lead Status (Synced with GTM App)
                 </h3>
                 <div className="space-y-2">
                   <div className="flex items-start gap-3">
-                    <span className="text-neon-cyan font-semibold text-xs w-16">NEW</span>
-                    <span className="text-gray-600">Fresh lead, not yet reviewed by sales. <strong>No action needed from you</strong> - SDR team will triage.</span>
+                    <span className="text-neon-cyan font-semibold text-xs w-20">NEW</span>
+                    <span className="text-gray-600">Fresh lead in Inbox, not yet reviewed. <strong>No action needed</strong> - GTM team will triage.</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-neon-orange font-semibold text-xs w-16">WORKING</span>
-                    <span className="text-gray-600">Sales is actively researching/qualifying this lead.</span>
+                    <span className="text-neon-orange font-semibold text-xs w-20">WORKING</span>
+                    <span className="text-gray-600">Sales is actively researching/qualifying this lead in GTM app.</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-neon-green font-semibold text-xs w-16">DONE</span>
-                    <span className="text-gray-600">Converted to pipeline opportunity or qualified MQL. Success!</span>
+                    <span className="text-neon-purple font-semibold text-xs w-20">RESEARCH</span>
+                    <span className="text-gray-600">AI research in progress (Apollo + Lusha + Gemini enrichment).</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-gray-400 font-semibold text-xs w-16">REJECTED</span>
-                    <span className="text-gray-600">Disqualified - personal email, competitor, not ICP fit, or duplicate.</span>
+                    <span className="text-neon-green font-semibold text-xs w-20">ACCEPTED</span>
+                    <span className="text-gray-600">Moved to Discovery account or TAL in GTM app. This is a <strong>qualified lead</strong>!</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-neon-green font-semibold text-xs w-20">MERGED</span>
+                    <span className="text-gray-600">Auto-linked to existing account (same company already in pipeline).</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-red-500 font-semibold text-xs w-20">REJECTED</span>
+                    <span className="text-gray-600">Disqualified with reason shown. Common reasons: Not ICP, Customer, Competitor, Personal Email, Partner.</span>
                   </div>
                 </div>
               </div>

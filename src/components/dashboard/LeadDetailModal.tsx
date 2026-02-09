@@ -32,17 +32,31 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
     return 'text-gray-400'
   }
 
-  const getStatusDisplay = (status: string) => {
-    switch (status) {
-      case 'new': return { label: 'NEW', color: 'text-neon-cyan' }
-      case 'working': return { label: 'WORKING', color: 'text-neon-orange' }
-      case 'done': return { label: 'CONVERTED', color: 'text-neon-green' }
-      case 'rejected': return { label: 'REJECTED', color: 'text-cyan-500/40' }
-      default: return { label: status.toUpperCase(), color: 'text-cyan-500/50' }
+  const getStatusDisplay = () => {
+    if (lead.action_status === 'done') {
+      // Check rejection_reason for accepted leads
+      if (lead.rejection_reason?.includes('auto_linked_to_discovery') ||
+          lead.rejection_reason?.includes('auto_linked_to_tal')) {
+        return { label: 'ACCEPTED', color: 'text-neon-green' }
+      }
+      if (lead.rejection_reason?.includes('auto_linked_existing')) {
+        return { label: 'MERGED', color: 'text-neon-green' }
+      }
+      return { label: 'DONE', color: 'text-neon-green' }
     }
+    if (lead.action_status === 'rejected') {
+      return { label: 'REJECTED', color: 'text-red-500' }
+    }
+    if (lead.action_status === 'working') {
+      return { label: 'WORKING', color: 'text-neon-orange' }
+    }
+    if (lead.action_status === 'researching') {
+      return { label: 'RESEARCHING', color: 'text-neon-purple' }
+    }
+    return { label: 'NEW', color: 'text-neon-cyan' }
   }
 
-  const status = getStatusDisplay(lead.action_status)
+  const status = getStatusDisplay()
   const signalLabel = lead.trigger_signal_type ? SIGNAL_TYPE_LABELS[lead.trigger_signal_type] || lead.trigger_signal_type : 'Unknown'
 
   return (
