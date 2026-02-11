@@ -6,7 +6,7 @@ import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
 import { LeadMQLFunnel } from '@/components/dashboard/LeadMQLFunnel'
-import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2 } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2, Info } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
@@ -40,6 +40,7 @@ export default function DashboardPage() {
 
   // Help panel
   const [showHelp, setShowHelp] = useState(false)
+  const [showScoringInfo, setShowScoringInfo] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -166,24 +167,6 @@ export default function DashboardPage() {
       : <ChevronDown className="w-3 h-3 text-neon-cyan" />
   }
 
-  const stats = useMemo(() => {
-    const total = filteredLeads.length
-    const p0 = filteredLeads.filter(l => l.signal_tier === 'P0').length
-    const p1 = filteredLeads.filter(l => l.signal_tier === 'P1').length
-    const highQuality = p0 + p1
-    // Count accepted leads (done + auto_linked to discovery/TAL)
-    const accepted = filteredLeads.filter(l =>
-      l.action_status === 'done' &&
-      (l.rejection_reason?.includes('auto_linked_to_discovery') ||
-       l.rejection_reason?.includes('auto_linked_to_tal') ||
-       l.rejection_reason?.includes('auto_linked_existing') ||
-       !l.rejection_reason)
-    ).length
-    const rejected = filteredLeads.filter(l => l.action_status === 'rejected').length
-    const avgScore = total > 0 ? Math.round(filteredLeads.reduce((sum, l) => sum + (l.total_score || 0), 0) / total) : 0
-    return { total, p0, p1, highQuality, accepted, rejected, avgScore }
-  }, [filteredLeads])
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -236,58 +219,13 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-[1400px] mx-auto px-4 py-4">
-        {/* Stats Row */}
-        <div className="grid grid-cols-5 gap-3 mb-4">
-          <div className="cyber-stat p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-3.5 h-3.5 text-neon-cyan" />
-              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">SIGNALS</span>
-            </div>
-            <div className="font-cyber text-2xl text-neon-cyan text-glow score-display">{stats.total}</div>
-          </div>
-          <div className="cyber-stat p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="w-3.5 h-3.5 text-neon-magenta" />
-              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">P0/P1</span>
-            </div>
-            <div className="font-cyber text-2xl text-neon-magenta text-glow score-display">{stats.highQuality}</div>
-            <div className="text-[10px] text-gray-400">{stats.total > 0 ? Math.round((stats.highQuality / stats.total) * 100) : 0}%</div>
-          </div>
-          <div className="cyber-stat p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-3.5 h-3.5 text-neon-green" />
-              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">ACCEPTED</span>
-            </div>
-            <div className="font-cyber text-2xl text-neon-green text-glow score-display">{stats.accepted}</div>
-            <div className="text-[10px] text-gray-400">{stats.total > 0 ? Math.round((stats.accepted / stats.total) * 100) : 0}%</div>
-          </div>
-          <div className="cyber-stat p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Brain className="w-3.5 h-3.5 text-neon-purple" />
-              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">AVG SCORE</span>
-            </div>
-            <div className="font-cyber text-2xl text-neon-purple text-glow score-display">{stats.avgScore}</div>
-            <div className="text-[10px] text-gray-400">/ 220</div>
-          </div>
-          <div className="cyber-stat p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="w-3.5 h-3.5 text-neon-orange" />
-              <span className="text-[9px] text-gray-500 font-cyber tracking-wider">TOP PERSONA</span>
-            </div>
-            <div className="font-cyber text-base text-neon-orange text-glow-sm">{overview?.by_persona?.[0]?.persona || 'N/A'}</div>
-            <div className="text-[10px] text-gray-400">{overview?.by_persona?.[0]?.pct || 0}%</div>
-          </div>
-        </div>
-
-        {/* Lead → MQL Funnel */}
-        <LeadMQLFunnel leads={filteredLeads} contentFilter={contentFilter || undefined} />
-
-        {/* Charts */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Charts Row with Funnel */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="cyber-card p-4">
             <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">SIGNAL TREND [30D]</div>
             <TrendChart data={trend} />
           </div>
+          <LeadMQLFunnel leads={filteredLeads} contentFilter={contentFilter || undefined} />
           <div className="cyber-card p-4">
             <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">PERSONA DISTRIBUTION</div>
             <PersonaBarChart data={overview?.by_persona || []} />
@@ -430,8 +368,18 @@ export default function DashboardPage() {
                   <th className="text-left w-[70px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('source')}>
                     <span className="flex items-center gap-1">SOURCE <SortIcon column="source" /></span>
                   </th>
-                  <th className="text-center w-[55px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('score')}>
-                    <span className="flex items-center justify-center gap-1">SCORE <SortIcon column="score" /></span>
+                  <th className="text-center w-[70px]">
+                    <span className="flex items-center justify-center gap-1">
+                      <span className="cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('score')}>SCORE</span>
+                      <SortIcon column="score" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowScoringInfo(true); }}
+                        className="p-0.5 hover:bg-cyan-100 rounded text-gray-400 hover:text-neon-cyan"
+                        title="How scoring works"
+                      >
+                        <Info className="w-3 h-3" />
+                      </button>
+                    </span>
                   </th>
                   <th className="text-center w-[45px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('tier')}>
                     <span className="flex items-center justify-center gap-1">TIER <SortIcon column="tier" /></span>
@@ -732,6 +680,125 @@ export default function DashboardPage() {
 
               <div className="text-xs text-gray-400 pt-4 border-t border-gray-100">
                 Questions? Contact <a href="mailto:martin.lepka@keboola.com" className="text-neon-cyan hover:underline">martin.lepka@keboola.com</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scoring Info Modal */}
+      {showScoringInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="font-cyber text-lg text-neon-cyan tracking-wider">ICP SCORING MODEL</h2>
+              <button onClick={() => setShowScoringInfo(false)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 text-sm">
+              {/* Total Score */}
+              <div className="p-4 bg-gradient-to-r from-cyan-50 to-purple-50 rounded-lg">
+                <div className="text-lg font-bold text-gray-800 mb-2">Total Score: 0 - 220 points</div>
+                <p className="text-gray-600">
+                  This is <strong>NOT Salesforce scoring</strong>. It's our ICP (Ideal Customer Profile) fit score
+                  that measures how well a lead matches our target customer profile.
+                </p>
+              </div>
+
+              {/* Score Components */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Score Components</h3>
+                <div className="space-y-3">
+                  {/* ICP Fit */}
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-blue-800">ICP Fit Score</span>
+                      <span className="text-blue-600 font-mono">0 - 100 pts</span>
+                    </div>
+                    <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                      <li>• <strong>Multi-entity structure</strong> (+25) - 5+ business entities</li>
+                      <li>• <strong>Company age</strong> (+20) - 20+ years (legacy systems likely)</li>
+                      <li>• <strong>Target industry</strong> (+20) - Manufacturing, Logistics, Retail, Hospitality</li>
+                      <li>• <strong>Employee count</strong> (+15) - 200-5,000 employees (mid-market)</li>
+                      <li>• <strong>Legacy tech stack</strong> (+20) - Oracle, SAP, AS400, QuickBooks</li>
+                      <li>• <strong>High data maturity</strong> (-30) - Already has Snowflake, dbt (anti-ICP)</li>
+                    </ul>
+                  </div>
+
+                  {/* Why Now */}
+                  <div className="p-4 bg-amber-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-amber-800">Why Now Score</span>
+                      <span className="text-amber-600 font-mono">0 - 80 pts</span>
+                    </div>
+                    <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                      <li>• <strong>New CFO/CIO hire</strong> (+25) - Executive change in last 90 days</li>
+                      <li>• <strong>Business pressure</strong> (+15) - Layoffs, cost-cutting announced</li>
+                      <li>• <strong>Growth signals</strong> (+10) - Expansion, new markets</li>
+                      <li>• <strong>Transformation</strong> (+15) - Digital/data transformation initiative</li>
+                      <li>• <strong>First data hire</strong> (+10) - Hiring data engineers for first time</li>
+                      <li>• <strong>M&A activity</strong> (+10) - Merger, acquisition announced</li>
+                    </ul>
+                  </div>
+
+                  {/* Intent */}
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-green-800">Intent Score</span>
+                      <span className="text-green-600 font-mono">0 - 40 pts</span>
+                    </div>
+                    <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                      <li>• <strong>Website engagement</strong> (+25) - Pricing page, multiple visits</li>
+                      <li>• <strong>3rd party intent</strong> (+15) - G2, Lusha intent signals</li>
+                      <li>• <strong>Email engagement</strong> (+5) - Opens, clicks on marketing emails</li>
+                      <li>• <strong>Gated content</strong> (+10-20) - Downloaded ebook, whitepaper</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Priority Tiers */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Priority Tiers</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg">
+                    <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p0">P0</span>
+                    <div>
+                      <div className="font-medium text-gray-700">Immediate Action</div>
+                      <div className="text-xs text-gray-500">Total ≥150 AND ICP ≥60 AND WhyNow ≥30</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
+                    <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p1">P1</span>
+                    <div>
+                      <div className="font-medium text-gray-700">High Priority</div>
+                      <div className="text-xs text-gray-500">Total ≥100 OR (ICP ≥70 AND WhyNow ≥20)</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-cyan-50 rounded-lg">
+                    <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p2">P2</span>
+                    <div>
+                      <div className="font-medium text-gray-700">Standard Follow-up</div>
+                      <div className="text-xs text-gray-500">Total ≥60</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p3">P3</span>
+                    <div>
+                      <div className="font-medium text-gray-700">Nurture Only</div>
+                      <div className="text-xs text-gray-500">Total &lt;60 - Low fit or insufficient data</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note */}
+              <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-xs">
+                <strong>Note:</strong> Most gated content downloads start as P3 because we only have intent signal
+                (they downloaded something) but limited ICP fit data until enrichment runs. Score improves after
+                AI research adds company firmographics and transformation signals.
               </div>
             </div>
           </div>
