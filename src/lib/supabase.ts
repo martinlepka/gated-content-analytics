@@ -183,6 +183,14 @@ export interface Lead {
     utm_medium?: string
     utm_campaign?: string
     country?: string
+    // Signal history for multi-signal tracking (MQL qualification)
+    signal_history?: Array<{
+      type: string
+      content?: string
+      timestamp?: string
+      form?: string
+    }>
+    engagement_count?: number
   }
 }
 

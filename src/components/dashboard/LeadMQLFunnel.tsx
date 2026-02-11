@@ -32,11 +32,19 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
     const working = filteredLeads.filter(l => l.action_status === 'working' || l.action_status === 'researching')
     const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
 
-    // MQL = accepted leads (done with auto_linked or no rejection reason)
-    const mqls = filteredLeads.filter(l =>
-      l.action_status === 'done' &&
-      (l.rejection_reason?.includes('auto_linked') || !l.rejection_reason)
-    )
+    // MQL = Marketing Qualified Lead requires EITHER:
+    // 1. Multiple signals (signal_history length > 1) - shows engagement
+    // 2. High quality (P0/P1) AND accepted to Discovery/TAL
+    // Single low-quality downloads are NOT MQLs
+    const mqls = filteredLeads.filter(l => {
+      const signalHistory = l.context_for_outreach?.signal_history || []
+      const hasMultipleSignals = Array.isArray(signalHistory) && signalHistory.length > 1
+      const isHighQualityAccepted = ['P0', 'P1'].includes(l.signal_tier) &&
+        l.action_status === 'done' &&
+        l.rejection_reason?.includes('auto_linked')
+
+      return hasMultipleSignals || isHighQualityAccepted
+    })
 
     // Quality breakdown
     const p0 = filteredLeads.filter(l => l.signal_tier === 'P0')
@@ -222,9 +230,14 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
 
               {/* Definition */}
               <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
-                <strong>What is an MQL?</strong> A Marketing Qualified Lead is a lead that has been accepted
-                into Discovery or TAL (Target Account List) by the GTM team. These are leads worth pursuing
-                based on ICP fit, intent signals, and manual qualification.
+                <strong>What is an MQL?</strong> A Marketing Qualified Lead requires EITHER:
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>Multiple signals</strong> - engaged with 2+ touchpoints (downloads, webinars, etc.)</li>
+                  <li><strong>High quality + accepted</strong> - P0/P1 tier AND moved to Discovery/TAL</li>
+                </ul>
+                <div className="mt-2 text-xs text-blue-600">
+                  Single low-quality downloads are NOT MQLs - they're just leads.
+                </div>
               </div>
             </div>
           </div>
