@@ -32,13 +32,27 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
     const working = filteredLeads.filter(l => l.action_status === 'working' || l.action_status === 'researching')
     const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
 
-    // MQL = Marketing Qualified Lead requires EITHER:
-    // 1. Multiple signals (signal_history length > 1) - shows engagement
-    // 2. High quality (P0/P1) AND accepted to Discovery/TAL
-    // Single low-quality downloads are NOT MQLs
+    // MQL = Marketing Qualified Lead requires 2+ combined signals:
+    // - Person signals: signal_history entries (downloads, webinars, forms)
+    // - Company signals: transformation_signals, why_now_signals from AI research
+    // OR High quality (P0/P1) accepted to Discovery/TAL
     const mqls = filteredLeads.filter(l => {
+      // Count person-level signals
       const signalHistory = l.context_for_outreach?.signal_history || []
-      const hasMultipleSignals = Array.isArray(signalHistory) && signalHistory.length > 1
+      const personSignalCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+
+      // Count company-level buying signals
+      const transformationSignals = l.ai_research?.company?.transformation_signals || {}
+      const whyNowSignals = l.ai_research?.company?.why_now_signals || {}
+      const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
+      const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
+      const companySignalCount = (hasTransformationSignal ? 1 : 0) + (hasWhyNowSignal ? 1 : 0)
+
+      // Total signals = person + company
+      const totalSignals = personSignalCount + companySignalCount
+      const hasMultipleSignals = totalSignals >= 2
+
+      // Alternative: High quality accepted
       const isHighQualityAccepted = ['P0', 'P1'].includes(l.signal_tier) &&
         l.action_status === 'done' &&
         l.rejection_reason?.includes('auto_linked')
@@ -230,13 +244,13 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
 
               {/* Definition */}
               <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
-                <strong>What is an MQL?</strong> A Marketing Qualified Lead requires EITHER:
+                <strong>What is an MQL?</strong> A Marketing Qualified Lead requires 2+ combined signals:
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li><strong>Multiple signals</strong> - engaged with 2+ touchpoints (downloads, webinars, etc.)</li>
-                  <li><strong>High quality + accepted</strong> - P0/P1 tier AND moved to Discovery/TAL</li>
+                  <li><strong>Person signals</strong> - downloads, webinar signups, form submissions</li>
+                  <li><strong>Company signals</strong> - AI-detected transformation or buying signals (new CFO, M&A, digital transformation)</li>
                 </ul>
                 <div className="mt-2 text-xs text-blue-600">
-                  Single low-quality downloads are NOT MQLs - they're just leads.
+                  Example: 1 download + company has "data transformation" signal = MQL
                 </div>
               </div>
             </div>
