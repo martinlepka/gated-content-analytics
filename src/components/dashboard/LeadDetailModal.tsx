@@ -151,6 +151,65 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
               </div>
             )}
 
+            {/* MQL Qualification Status */}
+            {(() => {
+              // Calculate qualification status
+              const signalHistory = lead.context_for_outreach?.signal_history || []
+              const personSignalCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+              const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
+              const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
+              const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
+              const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
+              const companySignalCount = (hasTransformationSignal ? 1 : 0) + (hasWhyNowSignal ? 1 : 0)
+              const totalSignals = Math.max(personSignalCount, 1) + companySignalCount
+              const isPreMql = totalSignals >= 2
+              const isMql = isPreMql && lead.action_status === 'done' && lead.rejection_reason?.includes('auto_linked')
+
+              return (
+                <div className={`border rounded-lg p-3 ${
+                  isMql ? 'border-emerald-300 bg-emerald-50' :
+                  isPreMql ? 'border-amber-300 bg-amber-50' :
+                  'border-gray-200 bg-gray-50'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-cyber tracking-wider text-gray-600">MQL QUALIFICATION</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isMql ? 'bg-emerald-200 text-emerald-800' :
+                      isPreMql ? 'bg-amber-200 text-amber-800' :
+                      'bg-gray-200 text-gray-600'
+                    }`}>
+                      {isMql ? '✓ MQL' : isPreMql ? 'PRE-MQL' : 'LEAD'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-gray-500">Person signals:</span>
+                      <span className="ml-1 font-medium">{Math.max(personSignalCount, 1)}</span>
+                      {personSignalCount > 1 && (
+                        <span className="ml-1 text-amber-600">({personSignalCount} touchpoints)</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Company signals:</span>
+                      <span className="ml-1 font-medium">{companySignalCount}</span>
+                      {hasTransformationSignal && <span className="ml-1 text-blue-600">(transformation)</span>}
+                      {hasWhyNowSignal && <span className="ml-1 text-purple-600">(why now)</span>}
+                    </div>
+                  </div>
+                  {isPreMql && !isMql && (
+                    <div className="mt-2 text-[10px] text-amber-700 bg-amber-100 rounded px-2 py-1">
+                      → Move to Discovery in GTM app to convert to MQL
+                    </div>
+                  )}
+                  {isMql && (
+                    <div className="mt-2 text-[10px] text-emerald-700 bg-emerald-100 rounded px-2 py-1">
+                      ✓ Accepted to Discovery/TAL
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Contact & Company */}
             <div className="grid grid-cols-2 gap-3">
               {/* Contact */}

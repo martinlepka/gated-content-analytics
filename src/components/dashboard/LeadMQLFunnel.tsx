@@ -32,11 +32,9 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
     const working = filteredLeads.filter(l => l.action_status === 'working' || l.action_status === 'researching')
     const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
 
-    // MQL = Marketing Qualified Lead requires 2+ combined signals:
-    // - Person signals: signal_history entries (downloads, webinars, forms)
-    // - Company signals: transformation_signals, why_now_signals from AI research
-    // OR High quality (P0/P1) accepted to Discovery/TAL
-    const mqls = filteredLeads.filter(l => {
+    // Pre-MQL = 2+ combined signals (person + company) - shows buying intent
+    // MQL = Pre-MQL + accepted to Discovery/TAL in GTM app
+    const preMqls = filteredLeads.filter(l => {
       // Count person-level signals
       const signalHistory = l.context_for_outreach?.signal_history || []
       const personSignalCount = Array.isArray(signalHistory) ? signalHistory.length : 0
@@ -48,17 +46,16 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
       const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
       const companySignalCount = (hasTransformationSignal ? 1 : 0) + (hasWhyNowSignal ? 1 : 0)
 
-      // Total signals = person + company
-      const totalSignals = personSignalCount + companySignalCount
-      const hasMultipleSignals = totalSignals >= 2
-
-      // Alternative: High quality accepted
-      const isHighQualityAccepted = ['P0', 'P1'].includes(l.signal_tier) &&
-        l.action_status === 'done' &&
-        l.rejection_reason?.includes('auto_linked')
-
-      return hasMultipleSignals || isHighQualityAccepted
+      // Total signals = person + company (1 download counts as 1)
+      const totalSignals = Math.max(personSignalCount, 1) + companySignalCount
+      return totalSignals >= 2
     })
+
+    // MQL = Pre-MQL that has been accepted to Discovery/TAL
+    const mqls = preMqls.filter(l =>
+      l.action_status === 'done' &&
+      l.rejection_reason?.includes('auto_linked')
+    )
 
     // Quality breakdown
     const p0 = filteredLeads.filter(l => l.signal_tier === 'P0')
@@ -69,10 +66,12 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
       newLeads,
       working,
       rejected,
+      preMqls,
       mqls,
       p0,
       p1,
-      conversionRate: total > 0 ? ((mqls.length / total) * 100).toFixed(1) : '0',
+      preMqlRate: total > 0 ? ((preMqls.length / total) * 100).toFixed(1) : '0',
+      mqlRate: preMqls.length > 0 ? ((mqls.length / preMqls.length) * 100).toFixed(0) : '0',
       qualityRate: total > 0 ? (((p0.length + p1.length) / total) * 100).toFixed(0) : '0',
     }
   }, [leads, contentFilter])
@@ -83,30 +82,41 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
         className="cyber-card p-4 cursor-pointer hover:border-neon-cyan/50 transition-colors h-full"
         onClick={() => setShowModal(true)}
       >
-        <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">LEAD → MQL FUNNEL</div>
+        <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">LEAD → PRE-MQL → MQL</div>
 
         {/* Compact Funnel */}
-        <div className="flex items-center justify-center gap-2 mb-3">
+        <div className="flex items-center justify-center gap-1 mb-3">
           {/* Leads */}
           <div className="text-center">
-            <div className="text-2xl font-bold text-indigo-600">{stats.total}</div>
-            <div className="text-[9px] text-gray-500 uppercase">Leads</div>
+            <div className="text-xl font-bold text-indigo-600">{stats.total}</div>
+            <div className="text-[8px] text-gray-500 uppercase">Leads</div>
           </div>
 
-          <ChevronRight className="w-4 h-4 text-gray-300" />
+          <ChevronRight className="w-3 h-3 text-gray-300" />
+
+          {/* Pre-MQLs */}
+          <div className="text-center">
+            <div className="text-xl font-bold text-amber-600">{stats.preMqls.length}</div>
+            <div className="text-[8px] text-gray-500 uppercase">Pre-MQL</div>
+          </div>
+
+          <ChevronRight className="w-3 h-3 text-gray-300" />
 
           {/* MQLs */}
           <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-600">{stats.mqls.length}</div>
-            <div className="text-[9px] text-gray-500 uppercase">MQLs</div>
+            <div className="text-xl font-bold text-emerald-600">{stats.mqls.length}</div>
+            <div className="text-[8px] text-gray-500 uppercase">MQL</div>
           </div>
         </div>
 
-        {/* Conversion Rate */}
-        <div className="text-center mb-3">
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded-full">
-            <TrendingUp className="w-3 h-3 text-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-700">{stats.conversionRate}%</span>
+        {/* Conversion Rates */}
+        <div className="flex justify-center gap-2 mb-3">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 rounded-full">
+            <span className="text-[9px] text-amber-700">{stats.preMqlRate}% Pre-MQL</span>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 rounded-full">
+            <TrendingUp className="w-2.5 h-2.5 text-emerald-600" />
+            <span className="text-[9px] text-emerald-700">{stats.mqlRate}% MQL</span>
           </span>
         </div>
 
@@ -114,37 +124,32 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
         <div className="h-2 rounded-full overflow-hidden bg-gray-100 mb-2">
           <div className="h-full flex">
             <div
-              style={{ width: `${(stats.newLeads.length / Math.max(stats.total, 1)) * 100}%` }}
-              className="bg-cyan-400"
+              style={{ width: `${((stats.total - stats.preMqls.length) / Math.max(stats.total, 1)) * 100}%` }}
+              className="bg-gray-300"
+              title="Leads (not Pre-MQL)"
             />
             <div
-              style={{ width: `${(stats.working.length / Math.max(stats.total, 1)) * 100}%` }}
+              style={{ width: `${((stats.preMqls.length - stats.mqls.length) / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-amber-400"
-            />
-            <div
-              style={{ width: `${(stats.rejected.length / Math.max(stats.total, 1)) * 100}%` }}
-              className="bg-red-400"
+              title="Pre-MQL (not yet MQL)"
             />
             <div
               style={{ width: `${(stats.mqls.length / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-emerald-500"
+              title="MQL"
             />
           </div>
         </div>
 
         {/* Legend */}
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9px]">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-[9px]">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-sm bg-cyan-400" />
-            <span className="text-gray-500">New {stats.newLeads.length}</span>
+            <div className="w-2 h-2 rounded-sm bg-gray-300" />
+            <span className="text-gray-500">Lead {stats.total - stats.preMqls.length}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-amber-400" />
-            <span className="text-gray-500">Working {stats.working.length}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-sm bg-red-400" />
-            <span className="text-gray-500">Rejected {stats.rejected.length}</span>
+            <span className="text-gray-500">Pre-MQL {stats.preMqls.length - stats.mqls.length}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-emerald-500" />
@@ -167,51 +172,51 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Summary */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 bg-indigo-50 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-indigo-600">{stats.total}</div>
-                  <div className="text-sm text-indigo-700">Total Leads</div>
+              {/* Summary - Funnel */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="p-3 bg-indigo-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-indigo-600">{stats.total}</div>
+                  <div className="text-xs text-indigo-700">Leads</div>
                 </div>
-                <div className="p-4 bg-emerald-50 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-emerald-600">{stats.mqls.length}</div>
-                  <div className="text-sm text-emerald-700">MQLs (Accepted)</div>
+                <div className="p-3 bg-amber-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-amber-600">{stats.preMqls.length}</div>
+                  <div className="text-xs text-amber-700">Pre-MQL</div>
+                  <div className="text-[10px] text-amber-600">{stats.preMqlRate}%</div>
                 </div>
-                <div className="p-4 bg-gray-50 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-gray-700">{stats.conversionRate}%</div>
-                  <div className="text-sm text-gray-600">Conversion Rate</div>
+                <div className="p-3 bg-emerald-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-emerald-600">{stats.mqls.length}</div>
+                  <div className="text-xs text-emerald-700">MQL</div>
+                  <div className="text-[10px] text-emerald-600">{stats.mqlRate}%</div>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-gray-600">{stats.preMqls.length - stats.mqls.length}</div>
+                  <div className="text-xs text-gray-600">Pending</div>
+                  <div className="text-[10px] text-gray-500">in GTM Inbox</div>
                 </div>
               </div>
 
-              {/* Status Breakdown */}
+              {/* Funnel Breakdown */}
               <div>
-                <h3 className="font-semibold text-gray-800 mb-3">Status Breakdown</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">Funnel Breakdown</h3>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-cyan-400" />
-                      <span className="font-medium text-gray-700">New (Unreviewed)</span>
+                      <div className="w-3 h-3 rounded bg-gray-300" />
+                      <span className="font-medium text-gray-700">Leads (single signal, no buying intent)</span>
                     </div>
-                    <span className="font-bold text-cyan-700">{stats.newLeads.length}</span>
+                    <span className="font-bold text-gray-600">{stats.total - stats.preMqls.length}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-amber-400" />
-                      <span className="font-medium text-gray-700">Working / Researching</span>
+                      <span className="font-medium text-gray-700">Pre-MQL (2+ signals, pending review)</span>
                     </div>
-                    <span className="font-bold text-amber-700">{stats.working.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-red-400" />
-                      <span className="font-medium text-gray-700">Rejected</span>
-                    </div>
-                    <span className="font-bold text-red-700">{stats.rejected.length}</span>
+                    <span className="font-bold text-amber-700">{stats.preMqls.length - stats.mqls.length}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-emerald-500" />
-                      <span className="font-medium text-gray-700">MQL (Accepted to Discovery/TAL)</span>
+                      <span className="font-medium text-gray-700">MQL (accepted to Discovery/TAL)</span>
                     </div>
                     <span className="font-bold text-emerald-700">{stats.mqls.length}</span>
                   </div>
@@ -243,14 +248,19 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
               </div>
 
               {/* Definition */}
-              <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
-                <strong>What is an MQL?</strong> A Marketing Qualified Lead requires 2+ combined signals:
-                <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li><strong>Person signals</strong> - downloads, webinar signups, form submissions</li>
-                  <li><strong>Company signals</strong> - AI-detected transformation or buying signals (new CFO, M&A, digital transformation)</li>
-                </ul>
-                <div className="mt-2 text-xs text-blue-600">
-                  Example: 1 download + company has "data transformation" signal = MQL
+              <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-800 space-y-3">
+                <div>
+                  <strong className="text-amber-700">Pre-MQL</strong> = 2+ combined signals:
+                  <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
+                    <li><strong>Person signals</strong> - downloads, webinar signups, form submissions</li>
+                    <li><strong>Company signals</strong> - AI-detected transformation (data/digital/AI initiatives)</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong className="text-emerald-700">MQL</strong> = Pre-MQL <strong>+ accepted to Discovery/TAL</strong> in GTM app
+                </div>
+                <div className="text-xs text-blue-600 border-t border-blue-200 pt-2">
+                  Example: 1 download + company "data transformation" = Pre-MQL → move to Discovery = MQL
                 </div>
               </div>
             </div>
