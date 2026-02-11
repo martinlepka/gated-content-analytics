@@ -524,20 +524,20 @@ export default function DashboardPage() {
                             {signalLabel}
                           </span>
                         </td>
-                        <td>
+                        <td className="min-w-[180px]">
                           <div className="flex items-center gap-1.5">
-                            <div>
-                              <div className="text-gray-800 text-[11px] truncate max-w-[140px] leading-tight">
+                            <div className="min-w-0">
+                              <div className="text-gray-800 text-[11px] leading-tight">
                                 {lead.first_name || lead.last_name
                                   ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                   : lead.email?.split('@')[0]}
                               </div>
                               {lead.title && (
-                                <div className="text-neon-purple text-[9px] truncate max-w-[140px] leading-tight font-medium">
+                                <div className="text-neon-purple text-[9px] leading-tight font-medium">
                                   {lead.title}
                                 </div>
                               )}
-                              <div className="text-gray-400 text-[9px] truncate max-w-[140px] leading-tight">
+                              <div className="text-gray-400 text-[9px] leading-tight break-all">
                                 {lead.email}
                               </div>
                             </div>
@@ -548,16 +548,16 @@ export default function DashboardPage() {
                             )}
                           </div>
                         </td>
-                        <td>
+                        <td className="min-w-[140px]">
                           {isPersonal ? (
                             <span className="text-gray-400 italic text-[10px]">personal email</span>
                           ) : (
                             <div>
-                              <div className="text-gray-700 text-[11px] truncate max-w-[110px] leading-tight font-medium">
+                              <div className="text-gray-700 text-[11px] leading-tight font-medium">
                                 {lead.company_name || lead.company_domain || '-'}
                               </div>
                               {(lead.industry || lead.employee_count) && (
-                                <div className="text-gray-400 text-[9px] truncate max-w-[110px] leading-tight">
+                                <div className="text-gray-400 text-[9px] leading-tight">
                                   {[lead.industry, lead.employee_count].filter(Boolean).join(' • ')}
                                 </div>
                               )}
