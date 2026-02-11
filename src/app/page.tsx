@@ -629,8 +629,8 @@ export default function DashboardPage() {
                 </p>
                 <ul className="list-disc list-inside text-gray-500 space-y-1 ml-2">
                   <li><strong>ICP Fit (0-100):</strong> Company size, age, industry, tech stack, multi-entity structure</li>
-                  <li><strong>Why Now (0-80):</strong> Executive changes, M&A, layoffs, transformation signals</li>
-                  <li><strong>Intent (0-40):</strong> Website engagement, 3rd party intent data (G2, Lusha)</li>
+                  <li><strong>Persona (0-50):</strong> Job title fit (CFO=25, VP Finance=22, Controller=20, etc.) + tenure signals</li>
+                  <li><strong>Intent (0-50):</strong> Website engagement, signal type, 3rd party intent (G2, Lusha)</li>
                 </ul>
                 <p className="text-gray-500 mt-2 text-xs">
                   Higher score = better fit for Keboola Financial Intelligence. Gated content alone gives ~10-20 intent points.

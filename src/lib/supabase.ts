@@ -109,6 +109,7 @@ export interface Lead {
   lead_grade: string
   total_score: number
   icp_fit_score: number
+  persona_score: number  // "Why Now" score (0-80) - synced with GTM Inbox
   intent_score: number
   action_status: string
   rejection_reason: string | null

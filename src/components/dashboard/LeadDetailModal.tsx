@@ -100,8 +100,8 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
 
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-5 space-y-4">
-            {/* Score Bar */}
-            <div className="grid grid-cols-5 gap-2">
+            {/* Score Bar - synced with GTM Inbox */}
+            <div className="grid grid-cols-6 gap-2">
               <div className="cyber-stat p-3 text-center">
                 <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.total_score, 220)}`}>
                   {lead.total_score}
@@ -113,6 +113,12 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                   {lead.icp_fit_score}
                 </div>
                 <div className="text-[9px] text-gray-500 tracking-wider">ICP FIT</div>
+              </div>
+              <div className="cyber-stat p-3 text-center">
+                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.persona_score || 0, 50)}`}>
+                  {lead.persona_score || 0}
+                </div>
+                <div className="text-[9px] text-gray-500 tracking-wider">PERSONA</div>
               </div>
               <div className="cyber-stat p-3 text-center">
                 <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.intent_score, 40)}`}>
