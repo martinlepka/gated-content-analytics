@@ -6,7 +6,7 @@ import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
 import { LeadMQLFunnel } from '@/components/dashboard/LeadMQLFunnel'
-import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2, Info } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2, Info, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
@@ -15,6 +15,7 @@ const TIME_FILTERS = [
   { value: '14', label: '14D' },
   { value: '30', label: '30D' },
   { value: 'all', label: 'ALL' },
+  { value: 'custom', label: 'Custom' },
 ]
 
 export default function DashboardPage() {
@@ -27,6 +28,8 @@ export default function DashboardPage() {
 
   // Filters
   const [timeFilter, setTimeFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
   const [tierFilter, setTierFilter] = useState<string>('')
   const [signalTypeFilter, setSignalTypeFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string>('')
@@ -81,7 +84,20 @@ export default function DashboardPage() {
 
   const filteredLeads = useMemo(() => {
     let filtered = leads.filter(lead => {
-      if (timeFilter !== 'all') {
+      // Date filtering
+      if (timeFilter === 'custom') {
+        // Custom date range
+        const leadDate = parseISO(lead.inbox_entered_at)
+        if (dateFrom) {
+          const fromDate = parseISO(dateFrom)
+          if (!isAfter(leadDate, fromDate) && leadDate.toDateString() !== fromDate.toDateString()) return false
+        }
+        if (dateTo) {
+          const toDate = parseISO(dateTo + 'T23:59:59')
+          if (isAfter(leadDate, toDate)) return false
+        }
+      } else if (timeFilter !== 'all') {
+        // Preset filters (7, 14, 30 days)
         const days = parseInt(timeFilter)
         const cutoff = subDays(new Date(), days)
         if (!isAfter(parseISO(lead.inbox_entered_at), cutoff)) return false
@@ -149,7 +165,7 @@ export default function DashboardPage() {
     })
 
     return filtered
-  }, [leads, timeFilter, tierFilter, sourceFilter, statusFilter, contentFilter, searchQuery, sortColumn, sortDirection])
+  }, [leads, timeFilter, dateFrom, dateTo, tierFilter, sourceFilter, statusFilter, contentFilter, searchQuery, sortColumn, sortDirection])
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -247,16 +263,50 @@ export default function DashboardPage() {
           </div>
 
           {/* Time */}
-          <div className="flex">
-            {TIME_FILTERS.map(tf => (
-              <button
-                key={tf.value}
-                onClick={() => setTimeFilter(tf.value)}
-                className={`cyber-toggle ${timeFilter === tf.value ? 'active' : ''}`}
-              >
-                {tf.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <div className="flex">
+              {TIME_FILTERS.map(tf => (
+                <button
+                  key={tf.value}
+                  onClick={() => {
+                    setTimeFilter(tf.value)
+                    if (tf.value !== 'custom') {
+                      setDateFrom('')
+                      setDateTo('')
+                    }
+                  }}
+                  className={`cyber-toggle ${timeFilter === tf.value ? 'active' : ''}`}
+                >
+                  {tf.value === 'custom' ? (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {tf.label}
+                    </span>
+                  ) : tf.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Date Range Inputs */}
+            {timeFilter === 'custom' && (
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="cyber-input px-2 py-1 text-[10px] w-[110px]"
+                  placeholder="From"
+                />
+                <span className="text-gray-400 text-xs">→</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="cyber-input px-2 py-1 text-[10px] w-[110px]"
+                  placeholder="To"
+                />
+              </div>
+            )}
           </div>
 
           {/* Signal Type */}
