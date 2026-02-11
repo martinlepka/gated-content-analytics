@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { fetchGatedContentAPI, OverviewData, TrendData, Lead, SIGNAL_TYPE_LABELS } from '@/lib/supabase'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
@@ -30,10 +30,29 @@ export default function DashboardPage() {
   const [timeFilter, setTimeFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
-  const [tierFilter, setTierFilter] = useState<string>('')
+  const [tierFilter, setTierFilter] = useState<string[]>([])
   const [signalTypeFilter, setSignalTypeFilter] = useState<string>('')
-  const [sourceFilter, setSourceFilter] = useState<string>('')
-  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [sourceFilter, setSourceFilter] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+
+  // Dropdown open states for multiselect
+  const [tierDropdownOpen, setTierDropdownOpen] = useState(false)
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
+  const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-dropdown]')) {
+        setTierDropdownOpen(false)
+        setStatusDropdownOpen(false)
+        setSourceDropdownOpen(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
   const [contentFilter, setContentFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -102,9 +121,9 @@ export default function DashboardPage() {
         const cutoff = subDays(new Date(), days)
         if (!isAfter(parseISO(lead.inbox_entered_at), cutoff)) return false
       }
-      if (tierFilter && lead.signal_tier !== tierFilter) return false
-      if (sourceFilter && lead.utm_source !== sourceFilter) return false
-      if (statusFilter && lead.action_status !== statusFilter) return false
+      if (tierFilter.length > 0 && !tierFilter.includes(lead.signal_tier)) return false
+      if (sourceFilter.length > 0 && !sourceFilter.includes(lead.utm_source || '')) return false
+      if (statusFilter.length > 0 && !statusFilter.includes(lead.action_status)) return false
       if (contentFilter && lead.content_name !== contentFilter) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
@@ -328,20 +347,44 @@ export default function DashboardPage() {
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
           </div>
 
-          {/* Tier */}
-          <div className="relative">
-            <select
-              className="cyber-select pr-7"
-              value={tierFilter}
-              onChange={(e) => setTierFilter(e.target.value)}
+          {/* Tier - Multiselect */}
+          <div className="relative" data-dropdown>
+            <button
+              className="cyber-select pr-7 text-left flex items-center gap-1"
+              onClick={() => setTierDropdownOpen(!tierDropdownOpen)}
             >
-              <option value="">All Tiers</option>
-              <option value="P0">P0</option>
-              <option value="P1">P1</option>
-              <option value="P2">P2</option>
-              <option value="P3">P3</option>
-            </select>
+              {tierFilter.length === 0 ? 'All Tiers' : tierFilter.join(', ')}
+            </button>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+            {tierDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[120px]">
+                {['P0', 'P1', 'P2', 'P3'].map(tier => (
+                  <label key={tier} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={tierFilter.includes(tier)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setTierFilter([...tierFilter, tier])
+                        } else {
+                          setTierFilter(tierFilter.filter(t => t !== tier))
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <span className={`font-bold ${tier === 'P0' ? 'text-red-600' : tier === 'P1' ? 'text-orange-600' : tier === 'P2' ? 'text-yellow-600' : 'text-gray-500'}`}>{tier}</span>
+                  </label>
+                ))}
+                {tierFilter.length > 0 && (
+                  <button
+                    onClick={() => setTierFilter([])}
+                    className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 border-t"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Content Asset */}
@@ -361,38 +404,92 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Source */}
+          {/* Source - Multiselect */}
           {sources.length > 0 && (
-            <div className="relative">
-              <select
-                className="cyber-select pr-7"
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
+            <div className="relative" data-dropdown>
+              <button
+                className="cyber-select pr-7 text-left"
+                onClick={() => setSourceDropdownOpen(!sourceDropdownOpen)}
               >
-                <option value="">All Sources</option>
-                {sources.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                {sourceFilter.length === 0 ? 'All Sources' : `${sourceFilter.length} selected`}
+              </button>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+              {sourceDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto">
+                  {sources.map(source => (
+                    <label key={source} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs">
+                      <input
+                        type="checkbox"
+                        checked={sourceFilter.includes(source)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSourceFilter([...sourceFilter, source])
+                          } else {
+                            setSourceFilter(sourceFilter.filter(s => s !== source))
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="truncate">{source}</span>
+                    </label>
+                  ))}
+                  {sourceFilter.length > 0 && (
+                    <button
+                      onClick={() => setSourceFilter([])}
+                      className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 border-t"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Status */}
-          <div className="relative">
-            <select
-              className="cyber-select pr-7"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+          {/* Status - Multiselect */}
+          <div className="relative" data-dropdown>
+            <button
+              className="cyber-select pr-7 text-left"
+              onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
             >
-              <option value="">All Status</option>
-              <option value="new">New (Unreviewed)</option>
-              <option value="working">Working</option>
-              <option value="researching">Researching</option>
-              <option value="done">Accepted/Done</option>
-              <option value="rejected">Rejected</option>
-            </select>
+              {statusFilter.length === 0 ? 'All Status' : `${statusFilter.length} selected`}
+            </button>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+            {statusDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[160px]">
+                {[
+                  { value: 'new', label: 'New', color: 'text-cyan-600' },
+                  { value: 'working', label: 'Working', color: 'text-orange-600' },
+                  { value: 'researching', label: 'Researching', color: 'text-purple-600' },
+                  { value: 'done', label: 'Accepted/Done', color: 'text-emerald-600' },
+                  { value: 'rejected', label: 'Rejected', color: 'text-red-600' },
+                ].map(status => (
+                  <label key={status.value} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={statusFilter.includes(status.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setStatusFilter([...statusFilter, status.value])
+                        } else {
+                          setStatusFilter(statusFilter.filter(s => s !== status.value))
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <span className={status.color}>{status.label}</span>
+                  </label>
+                ))}
+                {statusFilter.length > 0 && (
+                  <button
+                    onClick={() => setStatusFilter([])}
+                    className="w-full text-left px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50 border-t"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="ml-auto text-[10px] text-gray-500 font-mono">{filteredLeads.length} records</div>
