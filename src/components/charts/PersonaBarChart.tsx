@@ -7,13 +7,31 @@ interface PersonaBarChartProps {
   data: PersonaSummary[]
 }
 
-const COLORS = [
-  '#0891b2', // cyan
-  '#7c3aed', // purple
-  '#db2777', // magenta
-  '#059669', // green
-  '#ea580c', // orange
-  '#6b7280', // gray
+// Colors mapped to persona scoring tiers
+const PERSONA_COLORS: Record<string, string> = {
+  'CFO': '#059669',           // green (top tier)
+  'VP Finance': '#10b981',    // emerald
+  'Controller': '#0891b2',    // cyan
+  'FP&A': '#06b6d4',          // light cyan
+  'Finance Director': '#7c3aed', // purple
+  'Analytics Lead': '#8b5cf6',   // violet
+  'CEO': '#db2777',           // magenta
+  'COO': '#ec4899',           // pink
+  'CTO': '#f97316',           // orange
+  'CIO': '#fb923c',           // light orange
+  'CDO': '#eab308',           // yellow
+  'Founder/Owner': '#84cc16', // lime
+  'VP/Director': '#6366f1',   // indigo
+  'Manager/Head': '#a855f7',  // purple
+  'Finance (Other)': '#64748b', // slate
+  'Data/Analytics': '#475569',  // dark slate
+  'Other': '#9ca3af',         // gray
+  'Unknown': '#d1d5db',       // light gray
+}
+
+const FALLBACK_COLORS = [
+  '#0891b2', '#7c3aed', '#db2777', '#059669', '#ea580c',
+  '#6b7280', '#f59e0b', '#10b981', '#6366f1', '#ec4899'
 ]
 
 export function PersonaBarChart({ data }: PersonaBarChartProps) {
@@ -61,7 +79,7 @@ export function PersonaBarChart({ data }: PersonaBarChartProps) {
             {chartData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
+                fill={PERSONA_COLORS[entry.persona] || FALLBACK_COLORS[index % FALLBACK_COLORS.length]}
               />
             ))}
           </Bar>
