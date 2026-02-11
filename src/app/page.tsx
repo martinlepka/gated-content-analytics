@@ -5,7 +5,8 @@ import { fetchGatedContentAPI, OverviewData, TrendData, Lead, SIGNAL_TYPE_LABELS
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
-import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X } from 'lucide-react'
+import { LeadMQLFunnel } from '@/components/dashboard/LeadMQLFunnel'
+import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [signalTypeFilter, setSignalTypeFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [contentFilter, setContentFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Sorting
@@ -63,12 +65,17 @@ export default function DashboardPage() {
     fetchData()
   }, [signalTypeFilter])
 
-  const { sources } = useMemo(() => {
+  const { sources, contentNames } = useMemo(() => {
     const sourceSet = new Set<string>()
+    const contentSet = new Set<string>()
     leads.forEach(lead => {
       if (lead.utm_source) sourceSet.add(lead.utm_source)
+      if (lead.content_name) contentSet.add(lead.content_name)
     })
-    return { sources: Array.from(sourceSet).sort() }
+    return {
+      sources: Array.from(sourceSet).sort(),
+      contentNames: Array.from(contentSet).sort()
+    }
   }, [leads])
 
   const filteredLeads = useMemo(() => {
@@ -81,6 +88,7 @@ export default function DashboardPage() {
       if (tierFilter && lead.signal_tier !== tierFilter) return false
       if (sourceFilter && lead.utm_source !== sourceFilter) return false
       if (statusFilter && lead.action_status !== statusFilter) return false
+      if (contentFilter && lead.content_name !== contentFilter) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matches =
@@ -88,7 +96,9 @@ export default function DashboardPage() {
           lead.company_name?.toLowerCase().includes(q) ||
           lead.first_name?.toLowerCase().includes(q) ||
           lead.last_name?.toLowerCase().includes(q) ||
-          lead.content_name?.toLowerCase().includes(q)
+          lead.content_name?.toLowerCase().includes(q) ||
+          lead.industry?.toLowerCase().includes(q) ||
+          lead.title?.toLowerCase().includes(q)
         if (!matches) return false
       }
       return true
@@ -138,7 +148,7 @@ export default function DashboardPage() {
     })
 
     return filtered
-  }, [leads, timeFilter, tierFilter, sourceFilter, statusFilter, searchQuery, sortColumn, sortDirection])
+  }, [leads, timeFilter, tierFilter, sourceFilter, statusFilter, contentFilter, searchQuery, sortColumn, sortDirection])
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -269,6 +279,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Lead → MQL Funnel */}
+        <LeadMQLFunnel leads={filteredLeads} contentFilter={contentFilter || undefined} />
+
         {/* Charts */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="cyber-card p-4">
@@ -342,6 +355,23 @@ export default function DashboardPage() {
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
           </div>
+
+          {/* Content Asset */}
+          {contentNames.length > 0 && (
+            <div className="relative">
+              <select
+                className="cyber-select pr-7"
+                value={contentFilter}
+                onChange={(e) => setContentFilter(e.target.value)}
+              >
+                <option value="">All Content</option>
+                {contentNames.map(c => (
+                  <option key={c} value={c}>{c.length > 25 ? c.slice(0, 25) + '...' : c}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+            </div>
+          )}
 
           {/* Source */}
           {sources.length > 0 && (
@@ -499,12 +529,17 @@ export default function DashboardPage() {
                         <td>
                           <div className="flex items-center gap-1.5">
                             <div>
-                              <div className="text-gray-800 text-[11px] truncate max-w-[130px] leading-tight">
+                              <div className="text-gray-800 text-[11px] truncate max-w-[140px] leading-tight">
                                 {lead.first_name || lead.last_name
                                   ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                   : lead.email?.split('@')[0]}
                               </div>
-                              <div className="text-gray-400 text-[9px] truncate max-w-[130px] leading-tight">
+                              {lead.title && (
+                                <div className="text-neon-purple text-[9px] truncate max-w-[140px] leading-tight font-medium">
+                                  {lead.title}
+                                </div>
+                              )}
+                              <div className="text-gray-400 text-[9px] truncate max-w-[140px] leading-tight">
                                 {lead.email}
                               </div>
                             </div>
@@ -516,9 +551,20 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td>
-                          <div className="text-gray-700 text-[11px] truncate max-w-[90px]">
-                            {isPersonal ? <span className="text-gray-400 italic text-[10px]">personal</span> : (lead.company_name || '-')}
-                          </div>
+                          {isPersonal ? (
+                            <span className="text-gray-400 italic text-[10px]">personal email</span>
+                          ) : (
+                            <div>
+                              <div className="text-gray-700 text-[11px] truncate max-w-[110px] leading-tight font-medium">
+                                {lead.company_name || lead.company_domain || '-'}
+                              </div>
+                              {(lead.industry || lead.employee_count) && (
+                                <div className="text-gray-400 text-[9px] truncate max-w-[110px] leading-tight">
+                                  {[lead.industry, lead.employee_count].filter(Boolean).join(' • ')}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="max-w-[200px]">
                           <div className="text-gray-600 text-[11px] truncate" title={lead.content_name}>
