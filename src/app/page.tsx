@@ -260,7 +260,7 @@ export default function DashboardPage() {
             <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">SIGNAL TREND [30D]</div>
             <TrendChart data={trend} />
           </div>
-          <LeadMQLFunnel leads={filteredLeads} contentFilter={contentFilter || undefined} />
+          <LeadMQLFunnel leads={filteredLeads} contentFilter={contentFilter || undefined} onLeadClick={setSelectedLead} />
           <div className="cyber-card p-4">
             <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">PERSONA DISTRIBUTION</div>
             <PersonaBarChart data={overview?.by_persona || []} />

@@ -290,6 +290,11 @@ export default function LeadsPage() {
                                 ? `${lead.first_name || ''} ${lead.last_name || ''}`.trim()
                                 : lead.email?.split('@')[0]}
                             </div>
+                            {lead.title && (
+                              <div className="text-[9px] text-neon-purple font-medium truncate max-w-[130px] leading-tight">
+                                {lead.title}
+                              </div>
+                            )}
                             <div className="text-[9px] text-gray-400 truncate max-w-[130px] leading-tight">
                               {lead.email}
                             </div>

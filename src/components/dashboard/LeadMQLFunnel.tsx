@@ -2,7 +2,7 @@
 
 /**
  * Script: LeadMQLFunnel.tsx
- * Description: Compact funnel visualization showing Lead -> MQL progression
+ * Description: Compact funnel visualization showing Lead -> MQL progression with lead lists
  * Project: Gated Content Analytics
  * Author: MartinL
  * Created: 2026-02-11
@@ -10,15 +10,17 @@
 
 import { useMemo, useState } from 'react'
 import { Lead } from '@/lib/supabase'
-import { TrendingUp, X, ChevronRight } from 'lucide-react'
+import { TrendingUp, X, ChevronRight, User, Building2, Zap, ExternalLink } from 'lucide-react'
 
 interface LeadMQLFunnelProps {
   leads: Lead[]
   contentFilter?: string
+  onLeadClick?: (lead: Lead) => void
 }
 
-export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
+export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunnelProps) {
   const [showModal, setShowModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'preMql' | 'mql' | 'pending'>('preMql')
 
   const stats = useMemo(() => {
     const filteredLeads = contentFilter
@@ -160,7 +162,7 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
         <div className="text-[8px] text-gray-400 text-center mt-2">Click for details</div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Detail Modal with Lead Lists */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-auto">
@@ -171,102 +173,257 @@ export function LeadMQLFunnel({ leads, contentFilter }: LeadMQLFunnelProps) {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Summary - Funnel */}
+            <div className="p-6 space-y-4">
+              {/* Summary - Funnel (clickable tabs) */}
               <div className="grid grid-cols-4 gap-3">
                 <div className="p-3 bg-indigo-50 rounded-lg text-center">
                   <div className="text-2xl font-bold text-indigo-600">{stats.total}</div>
                   <div className="text-xs text-indigo-700">Leads</div>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-lg text-center">
+                <button
+                  onClick={() => setActiveTab('preMql')}
+                  className={`p-3 rounded-lg text-center transition-all ${
+                    activeTab === 'preMql'
+                      ? 'bg-amber-200 ring-2 ring-amber-400'
+                      : 'bg-amber-50 hover:bg-amber-100'
+                  }`}
+                >
                   <div className="text-2xl font-bold text-amber-600">{stats.preMqls.length}</div>
                   <div className="text-xs text-amber-700">Pre-MQL</div>
                   <div className="text-[10px] text-amber-600">{stats.preMqlRate}%</div>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-lg text-center">
+                </button>
+                <button
+                  onClick={() => setActiveTab('mql')}
+                  className={`p-3 rounded-lg text-center transition-all ${
+                    activeTab === 'mql'
+                      ? 'bg-emerald-200 ring-2 ring-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100'
+                  }`}
+                >
                   <div className="text-2xl font-bold text-emerald-600">{stats.mqls.length}</div>
                   <div className="text-xs text-emerald-700">MQL</div>
                   <div className="text-[10px] text-emerald-600">{stats.mqlRate}%</div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg text-center">
+                </button>
+                <button
+                  onClick={() => setActiveTab('pending')}
+                  className={`p-3 rounded-lg text-center transition-all ${
+                    activeTab === 'pending'
+                      ? 'bg-gray-200 ring-2 ring-gray-400'
+                      : 'bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
                   <div className="text-2xl font-bold text-gray-600">{stats.preMqls.length - stats.mqls.length}</div>
                   <div className="text-xs text-gray-600">Pending</div>
                   <div className="text-[10px] text-gray-500">in GTM Inbox</div>
+                </button>
+              </div>
+
+              {/* Lead Lists */}
+              <div className="border rounded-lg overflow-hidden">
+                {/* Tab Header */}
+                <div className="flex border-b bg-gray-50">
+                  <button
+                    onClick={() => setActiveTab('preMql')}
+                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                      activeTab === 'preMql'
+                        ? 'bg-amber-100 text-amber-800 border-b-2 border-amber-500'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    All Pre-MQLs ({stats.preMqls.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('mql')}
+                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                      activeTab === 'mql'
+                        ? 'bg-emerald-100 text-emerald-800 border-b-2 border-emerald-500'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    MQLs ({stats.mqls.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('pending')}
+                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                      activeTab === 'pending'
+                        ? 'bg-gray-200 text-gray-800 border-b-2 border-gray-500'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    Pending Review ({stats.preMqls.length - stats.mqls.length})
+                  </button>
+                </div>
+
+                {/* Lead List Content */}
+                <div className="max-h-[300px] overflow-y-auto">
+                  {activeTab === 'preMql' && (
+                    <LeadList
+                      leads={stats.preMqls}
+                      emptyMessage="No Pre-MQLs yet (2+ signals required)"
+                      onLeadClick={onLeadClick}
+                      showSignals
+                    />
+                  )}
+                  {activeTab === 'mql' && (
+                    <LeadList
+                      leads={stats.mqls}
+                      emptyMessage="No MQLs yet (Pre-MQL + accepted to Discovery)"
+                      onLeadClick={onLeadClick}
+                      showSignals
+                    />
+                  )}
+                  {activeTab === 'pending' && (
+                    <LeadList
+                      leads={stats.preMqls.filter(l => !stats.mqls.includes(l))}
+                      emptyMessage="No pending Pre-MQLs"
+                      onLeadClick={onLeadClick}
+                      showSignals
+                    />
+                  )}
                 </div>
               </div>
 
-              {/* Funnel Breakdown */}
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-3">Funnel Breakdown</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-gray-300" />
-                      <span className="font-medium text-gray-700">Leads (single signal, no buying intent)</span>
-                    </div>
-                    <span className="font-bold text-gray-600">{stats.total - stats.preMqls.length}</span>
+              {/* Definition (collapsed) */}
+              <details className="group">
+                <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                  <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
+                  What is Pre-MQL / MQL?
+                </summary>
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg text-xs text-blue-800 space-y-2">
+                  <div>
+                    <strong className="text-amber-700">Pre-MQL</strong> = 2+ combined signals (person downloads + company transformation signals)
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-amber-400" />
-                      <span className="font-medium text-gray-700">Pre-MQL (2+ signals, pending review)</span>
-                    </div>
-                    <span className="font-bold text-amber-700">{stats.preMqls.length - stats.mqls.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-emerald-500" />
-                      <span className="font-medium text-gray-700">MQL (accepted to Discovery/TAL)</span>
-                    </div>
-                    <span className="font-bold text-emerald-700">{stats.mqls.length}</span>
+                  <div>
+                    <strong className="text-emerald-700">MQL</strong> = Pre-MQL + accepted to Discovery/TAL in GTM app
                   </div>
                 </div>
-              </div>
-
-              {/* Quality Breakdown */}
-              <div>
-                <h3 className="font-semibold text-gray-800 mb-3">Quality Breakdown (ICP Fit)</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-pink-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">P0 (Hot)</span>
-                      <span className="font-bold text-pink-700">{stats.p0.length}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Score ≥150, ICP ≥60, WhyNow ≥30</div>
-                  </div>
-                  <div className="p-3 bg-purple-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">P1 (Warm)</span>
-                      <span className="font-bold text-purple-700">{stats.p1.length}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Score ≥100 or ICP ≥70</div>
-                  </div>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  High Quality (P0+P1): <strong>{stats.p0.length + stats.p1.length}</strong> ({stats.qualityRate}%)
-                </div>
-              </div>
-
-              {/* Definition */}
-              <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-800 space-y-3">
-                <div>
-                  <strong className="text-amber-700">Pre-MQL</strong> = 2+ combined signals:
-                  <ul className="list-disc list-inside mt-1 space-y-0.5 text-xs">
-                    <li><strong>Person signals</strong> - downloads, webinar signups, form submissions</li>
-                    <li><strong>Company signals</strong> - AI-detected transformation (data/digital/AI initiatives)</li>
-                  </ul>
-                </div>
-                <div>
-                  <strong className="text-emerald-700">MQL</strong> = Pre-MQL <strong>+ accepted to Discovery/TAL</strong> in GTM app
-                </div>
-                <div className="text-xs text-blue-600 border-t border-blue-200 pt-2">
-                  Example: 1 download + company "data transformation" = Pre-MQL → move to Discovery = MQL
-                </div>
-              </div>
+              </details>
             </div>
           </div>
         </div>
       )}
     </>
+  )
+}
+
+// Helper component to display lead list
+function LeadList({
+  leads,
+  emptyMessage,
+  onLeadClick,
+  showSignals
+}: {
+  leads: Lead[]
+  emptyMessage: string
+  onLeadClick?: (lead: Lead) => void
+  showSignals?: boolean
+}) {
+  if (leads.length === 0) {
+    return (
+      <div className="p-6 text-center text-gray-400 text-sm">
+        {emptyMessage}
+      </div>
+    )
+  }
+
+  // Sort by total_score descending
+  const sortedLeads = [...leads].sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+
+  return (
+    <div className="divide-y divide-gray-100">
+      {sortedLeads.map((lead) => {
+        // Calculate signal counts
+        const signalHistory = lead.context_for_outreach?.signal_history || []
+        const personSignalCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+        const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
+        const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
+        const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
+        const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
+        const companySignalCount = (hasTransformationSignal ? 1 : 0) + (hasWhyNowSignal ? 1 : 0)
+        const totalSignals = Math.max(personSignalCount, 1) + companySignalCount
+
+        // Get specific signals for display
+        const activeTransformationSignals = Object.entries(transformationSignals)
+          .filter(([, v]) => v === true)
+          .map(([k]) => k.replace(/_/g, ' '))
+        const activeWhyNowSignals = Object.entries(whyNowSignals)
+          .filter(([, v]) => v === true)
+          .map(([k]) => k.replace(/_/g, ' '))
+
+        return (
+          <div
+            key={lead.id}
+            onClick={() => onLeadClick?.(lead)}
+            className={`p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors ${
+              onLeadClick ? 'cursor-pointer' : ''
+            }`}
+          >
+            {/* Tier Badge */}
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+              lead.signal_tier === 'P0' ? 'bg-pink-100 text-pink-700' :
+              lead.signal_tier === 'P1' ? 'bg-purple-100 text-purple-700' :
+              lead.signal_tier === 'P2' ? 'bg-blue-100 text-blue-700' :
+              'bg-gray-100 text-gray-600'
+            }`}>
+              {lead.signal_tier || 'P3'}
+            </div>
+
+            {/* Lead Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <User className="w-3 h-3 text-gray-400" />
+                <span className="font-medium text-gray-800 truncate">
+                  {lead.first_name} {lead.last_name}
+                </span>
+                {lead.title && (
+                  <span className="text-xs text-gray-500 truncate">
+                    {lead.title}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Building2 className="w-3 h-3" />
+                <span className="truncate">{lead.company_name || 'Unknown company'}</span>
+                <span className="text-gray-300">•</span>
+                <span>{lead.content_name}</span>
+              </div>
+
+              {/* Signal badges */}
+              {showSignals && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {personSignalCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-cyan-50 text-cyan-700 rounded text-[10px]">
+                      <Zap className="w-2 h-2" />
+                      {personSignalCount} person
+                    </span>
+                  )}
+                  {activeTransformationSignals.map((signal) => (
+                    <span key={signal} className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px] capitalize">
+                      {signal}
+                    </span>
+                  ))}
+                  {activeWhyNowSignals.map((signal) => (
+                    <span key={signal} className="px-1.5 py-0.5 bg-rose-50 text-rose-700 rounded text-[10px] capitalize">
+                      {signal}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Score & Action */}
+            <div className="text-right flex items-center gap-2">
+              <div>
+                <div className="font-bold text-gray-800">{lead.total_score}</div>
+                <div className="text-[10px] text-gray-500">{totalSignals} signals</div>
+              </div>
+              {onLeadClick && (
+                <ExternalLink className="w-4 h-4 text-gray-300" />
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
