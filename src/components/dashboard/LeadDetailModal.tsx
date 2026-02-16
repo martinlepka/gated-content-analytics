@@ -189,7 +189,7 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                             t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view')),
                 thirdPartyIntent: signalTypes.some(t =>
                             t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
-                            t.includes('intent') || t.includes('buyer')) || (lead.intent_score || 0) >= 15,
+                            t.includes('intent') || t.includes('buyer') || t.includes('bombora')),
                 companySignals: hasTransformationSignal || hasWhyNowSignal,
               }
               const signalCategoryCount = Object.values(signalCategories).filter(v => v).length

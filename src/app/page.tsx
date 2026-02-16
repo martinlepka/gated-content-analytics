@@ -133,11 +133,10 @@ export default function DashboardPage() {
     if (signalTypes.some(t =>
         t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view'))) categories++
 
-    // Cat 3: 3rd party intent
+    // Cat 3: 3rd party intent (explicit signals only, NOT intent_score)
     if (signalTypes.some(t =>
         t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
-        t.includes('intent') || t.includes('buyer')) ||
-        (lead.intent_score || 0) >= 15) categories++
+        t.includes('intent') || t.includes('buyer') || t.includes('bombora'))) categories++
 
     // Cat 4: Company signals
     const transformationSignals = lead.ai_research?.company?.transformation_signals || {}

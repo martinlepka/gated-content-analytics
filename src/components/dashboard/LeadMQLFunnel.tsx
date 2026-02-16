@@ -101,10 +101,12 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
       if (hasRb2bVisit) signalCategories++
 
       // Category 3: 3rd party intent (G2, Lusha, Apollo buying intent)
+      // NOTE: Only count explicit 3rd party signals in signal_history
+      // DO NOT use intent_score - it can be high from Webflow forms alone
       const hasThirdPartyIntent = signalTypes.some(t =>
         t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
-        t.includes('intent') || t.includes('buyer')
-      ) || (l.intent_score || 0) >= 15 // High intent score indicates 3rd party signals
+        t.includes('intent') || t.includes('buyer') || t.includes('bombora')
+      )
       if (hasThirdPartyIntent) signalCategories++
 
       // Category 4: Company-level signals from AI research
