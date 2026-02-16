@@ -38,8 +38,10 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
     // PRE-MQL DEFINITION (Updated Feb 2026)
     // ============================================================
     // Pre-MQL = Lead with MQL potential, should be reviewed by sales team
-    // Lead is Pre-MQL if it meets ANY of these criteria:
     //
+    // EXCLUDES: rejected leads, spam, tests (only actionable leads)
+    //
+    // Lead is Pre-MQL if it meets ANY of these criteria:
     // 1. TIER P0/P1 - Already high quality by scoring model
     // 2. HIGH PERSONA (persona_score >= 18) - Finance decision maker
     // 3. HIGH INTENT (intent_score >= 20) - Demo, contact, pricing page
@@ -49,6 +51,16 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
     // MQL = Pre-MQL + accepted to Discovery/TAL in GTM app
     // ============================================================
     const preMqls = filteredLeads.filter(l => {
+      // EXCLUDE rejected leads - they are disqualified
+      if (l.action_status === 'rejected') {
+        return false
+      }
+
+      // EXCLUDE done leads that are NOT MQL (manually processed without linking)
+      if (l.action_status === 'done' && !l.rejection_reason?.includes('auto_linked')) {
+        return false
+      }
+
       // 1. Already high quality tier
       if (l.signal_tier === 'P0' || l.signal_tier === 'P1') {
         return true

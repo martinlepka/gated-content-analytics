@@ -156,19 +156,18 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
               // ============================================================
               // PRE-MQL CRITERIA (Must match LeadMQLFunnel.tsx)
               // ============================================================
-              // Pre-MQL = Lead with MQL potential
-              // Lead is Pre-MQL if it meets ANY of these criteria:
-              // 1. TIER P0/P1
-              // 2. HIGH PERSONA (persona_score >= 18)
-              // 3. HIGH INTENT (intent_score >= 20)
-              // 4. COMPANY SIGNALS (transformation OR why_now)
-              // 5. GOOD ICP + INTENT (icp >= 40 AND intent >= 12)
+              // Pre-MQL = Actionable lead with MQL potential
+              // EXCLUDES: rejected leads, done leads without auto_link
               // ============================================================
 
               const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
               const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
               const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
               const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
+
+              // Check exclusions first
+              const isRejected = lead.action_status === 'rejected'
+              const isDoneNotMql = lead.action_status === 'done' && !lead.rejection_reason?.includes('auto_linked')
 
               // Check each Pre-MQL criterion
               const criteria = {
@@ -179,26 +178,42 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                 icpWithIntent: (lead.icp_fit_score || 0) >= 40 && (lead.intent_score || 0) >= 12,
               }
 
-              const isPreMql = Object.values(criteria).some(v => v)
-              const isMql = isPreMql && lead.action_status === 'done' && lead.rejection_reason?.includes('auto_linked')
+              const meetsCriteria = Object.values(criteria).some(v => v)
+              const isMql = meetsCriteria && lead.action_status === 'done' && lead.rejection_reason?.includes('auto_linked')
+              const isPreMql = meetsCriteria && !isRejected && !isDoneNotMql && !isMql
 
               // Count how many criteria are met
               const criteriaMetCount = Object.values(criteria).filter(v => v).length
 
+              // Determine status label and styling
+              let statusLabel = 'LEAD'
+              let statusClass = 'bg-gray-200 text-gray-600'
+              let borderClass = 'border-gray-200 bg-gray-50'
+
+              if (isMql) {
+                statusLabel = '✓ MQL'
+                statusClass = 'bg-emerald-200 text-emerald-800'
+                borderClass = 'border-emerald-300 bg-emerald-50'
+              } else if (isRejected) {
+                statusLabel = 'REJECTED'
+                statusClass = 'bg-red-200 text-red-800'
+                borderClass = 'border-red-200 bg-red-50'
+              } else if (isDoneNotMql) {
+                statusLabel = 'PROCESSED'
+                statusClass = 'bg-gray-300 text-gray-700'
+                borderClass = 'border-gray-300 bg-gray-100'
+              } else if (isPreMql) {
+                statusLabel = 'PRE-MQL'
+                statusClass = 'bg-amber-200 text-amber-800'
+                borderClass = 'border-amber-300 bg-amber-50'
+              }
+
               return (
-                <div className={`border rounded-lg p-3 ${
-                  isMql ? 'border-emerald-300 bg-emerald-50' :
-                  isPreMql ? 'border-amber-300 bg-amber-50' :
-                  'border-gray-200 bg-gray-50'
-                }`}>
+                <div className={`border rounded-lg p-3 ${borderClass}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-cyber tracking-wider text-gray-600">MQL QUALIFICATION</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      isMql ? 'bg-emerald-200 text-emerald-800' :
-                      isPreMql ? 'bg-amber-200 text-amber-800' :
-                      'bg-gray-200 text-gray-600'
-                    }`}>
-                      {isMql ? '✓ MQL' : isPreMql ? 'PRE-MQL' : 'LEAD'}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusClass}`}>
+                      {statusLabel}
                     </span>
                   </div>
 
@@ -233,7 +248,7 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                   </div>
 
                   {/* Status message */}
-                  {isPreMql && !isMql && (
+                  {isPreMql && (
                     <div className="mt-2 text-[10px] text-amber-700 bg-amber-100 rounded px-2 py-1">
                       {criteriaMetCount >= 2
                         ? `→ Strong Pre-MQL (${criteriaMetCount} criteria met) - Review in GTM app`
@@ -245,7 +260,17 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                       ✓ Accepted to Discovery/TAL
                     </div>
                   )}
-                  {!isPreMql && (
+                  {isRejected && (
+                    <div className="mt-2 text-[10px] text-red-700 bg-red-100 rounded px-2 py-1">
+                      ✗ Disqualified - not counted in Pre-MQL funnel
+                    </div>
+                  )}
+                  {isDoneNotMql && (
+                    <div className="mt-2 text-[10px] text-gray-600 bg-gray-200 rounded px-2 py-1">
+                      Processed manually - not linked to Discovery/TAL
+                    </div>
+                  )}
+                  {!meetsCriteria && !isRejected && !isDoneNotMql && (
                     <div className="mt-2 text-[10px] text-gray-500 bg-gray-100 rounded px-2 py-1">
                       Lead needs stronger signals to qualify as Pre-MQL
                     </div>

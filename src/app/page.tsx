@@ -106,7 +106,13 @@ export default function DashboardPage() {
   // PRE-MQL DETECTION HELPER
   // ============================================================
   // Must match criteria in LeadMQLFunnel.tsx and LeadDetailModal.tsx
+  // Pre-MQL = actionable lead with MQL potential (excludes rejected/spam)
   const isPreMql = (lead: Lead): boolean => {
+    // EXCLUDE rejected leads
+    if (lead.action_status === 'rejected') return false
+    // EXCLUDE done leads that are NOT MQL
+    if (lead.action_status === 'done' && !lead.rejection_reason?.includes('auto_linked')) return false
+
     // 1. High tier
     if (lead.signal_tier === 'P0' || lead.signal_tier === 'P1') return true
     // 2. High persona score
@@ -125,7 +131,18 @@ export default function DashboardPage() {
   }
 
   const isMql = (lead: Lead): boolean => {
-    return isPreMql(lead) && lead.action_status === 'done' && (lead.rejection_reason?.includes('auto_linked') || false)
+    // MQL = accepted to Discovery/TAL (must pass Pre-MQL criteria check without exclusions)
+    if (lead.action_status !== 'done' || !lead.rejection_reason?.includes('auto_linked')) return false
+    // Check if meets any Pre-MQL criteria (without status exclusions since MQL is done+auto_linked)
+    if (lead.signal_tier === 'P0' || lead.signal_tier === 'P1') return true
+    if ((lead.persona_score || 0) >= 18) return true
+    if ((lead.intent_score || 0) >= 20) return true
+    const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
+    const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
+    if (Object.values(transformationSignals).some(v => v === true)) return true
+    if (Object.values(whyNowSignals).some(v => v === true)) return true
+    if ((lead.icp_fit_score || 0) >= 40 && (lead.intent_score || 0) >= 12) return true
+    return false
   }
 
   const filteredLeads = useMemo(() => {
