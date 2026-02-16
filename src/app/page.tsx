@@ -111,8 +111,43 @@ export default function DashboardPage() {
   // 1. Known company (has company_name)
   // 2. Finance persona (>=18) OR P0/P1 tier
   // 3. ICP fit (>=30)
-  // 4. Signal diversity (multi-touchpoint OR company signals)
+  // 4. Signal diversity (2+ signal CATEGORIES):
+  //    - Cat 1: 1st party form (webflow_*)
+  //    - Cat 2: 1st party visit (RB2B)
+  //    - Cat 3: 3rd party intent (G2, Lusha)
+  //    - Cat 4: Company signals (transformation, why_now)
   // ============================================================
+  const countSignalCategories = (lead: Lead): number => {
+    const signalHistory = lead.context_for_outreach?.signal_history || []
+    const signalTypes = Array.isArray(signalHistory)
+      ? signalHistory.map(s => (s.type || '').toLowerCase())
+      : []
+
+    let categories = 0
+
+    // Cat 1: 1st party form
+    if (lead.trigger_signal_type?.startsWith('webflow_') ||
+        signalTypes.some(t => t.startsWith('webflow'))) categories++
+
+    // Cat 2: 1st party visit (RB2B)
+    if (signalTypes.some(t =>
+        t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view'))) categories++
+
+    // Cat 3: 3rd party intent
+    if (signalTypes.some(t =>
+        t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
+        t.includes('intent') || t.includes('buyer')) ||
+        (lead.intent_score || 0) >= 15) categories++
+
+    // Cat 4: Company signals
+    const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
+    const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
+    if (Object.values(transformationSignals).some(v => v === true) ||
+        Object.values(whyNowSignals).some(v => v === true)) categories++
+
+    return categories
+  }
+
   const isPreMql = (lead: Lead): boolean => {
     // EXCLUDE rejected leads
     if (lead.action_status === 'rejected') return false
@@ -130,19 +165,8 @@ export default function DashboardPage() {
     // 3. Must have ICP fit
     if ((lead.icp_fit_score || 0) < 30) return false
 
-    // 4. Must have signal diversity
-    const signalHistory = lead.context_for_outreach?.signal_history || []
-    const touchpointCount = Array.isArray(signalHistory) ? signalHistory.length : 0
-    const hasMultiTouchpoint = touchpointCount >= 2
-
-    const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
-    const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
-    const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
-    const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-    const hasExternalIntent = (lead.intent_score || 0) >= 20
-
-    const hasCompanySignals = hasTransformationSignal || hasWhyNowSignal || hasExternalIntent
-    if (!hasMultiTouchpoint && !hasCompanySignals) return false
+    // 4. Must have 2+ signal categories
+    if (countSignalCategories(lead) < 2) return false
 
     return true
   }
@@ -157,16 +181,7 @@ export default function DashboardPage() {
     const isHighTier = lead.signal_tier === 'P0' || lead.signal_tier === 'P1'
     if (!isFinancePersona && !isHighTier) return false
     if ((lead.icp_fit_score || 0) < 30) return false
-
-    // Signal diversity check
-    const signalHistory = lead.context_for_outreach?.signal_history || []
-    const hasMultiTouchpoint = (Array.isArray(signalHistory) ? signalHistory.length : 0) >= 2
-    const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
-    const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
-    const hasCompanySignals = Object.values(transformationSignals).some(v => v === true) ||
-                              Object.values(whyNowSignals).some(v => v === true) ||
-                              (lead.intent_score || 0) >= 20
-    if (!hasMultiTouchpoint && !hasCompanySignals) return false
+    if (countSignalCategories(lead) < 2) return false
 
     return true
   }

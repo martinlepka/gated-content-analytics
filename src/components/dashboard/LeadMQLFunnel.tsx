@@ -43,9 +43,11 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
     // 1. Known company (has company_name, not personal email)
     // 2. Finance persona (persona_score >= 18) OR P0/P1 tier
     // 3. ICP fit (icp_fit_score >= 30)
-    // 4. Signal diversity (2+ signals):
-    //    - Multi-touchpoint (2+ engagements in signal_history)
-    //    - OR 1st party + company signals (transformation, why_now, intent)
+    // 4. Signal diversity (2+ signal CATEGORIES):
+    //    - Cat 1: 1st party form (webflow_* form submit)
+    //    - Cat 2: 1st party visit (RB2B website identification)
+    //    - Cat 3: 3rd party intent (G2, Lusha, Apollo)
+    //    - Cat 4: Company signals (transformation, why_now from AI research)
     //
     // EXCLUDES: rejected, done without auto_link
     // MQL = Pre-MQL + accepted to Discovery/TAL
@@ -78,26 +80,42 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
         return false
       }
 
-      // CONDITION 4: Must have signal diversity (2+ signals)
-      // Count 1st party signals (touchpoints)
+      // CONDITION 4: Must have signal diversity (2+ signal CATEGORIES)
       const signalHistory = l.context_for_outreach?.signal_history || []
-      const touchpointCount = Array.isArray(signalHistory) ? signalHistory.length : 0
-      const hasMultiTouchpoint = touchpointCount >= 2
+      const signalTypes = Array.isArray(signalHistory)
+        ? signalHistory.map(s => (s.type || '').toLowerCase())
+        : []
 
-      // Count company-level signals
+      // Count signal categories (need 2+)
+      let signalCategories = 0
+
+      // Category 1: 1st party form (Webflow form submit)
+      const hasWebflowForm = l.trigger_signal_type?.startsWith('webflow_') ||
+                            signalTypes.some(t => t.startsWith('webflow'))
+      if (hasWebflowForm) signalCategories++
+
+      // Category 2: 1st party visit (RB2B website identification)
+      const hasRb2bVisit = signalTypes.some(t =>
+        t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view')
+      )
+      if (hasRb2bVisit) signalCategories++
+
+      // Category 3: 3rd party intent (G2, Lusha, Apollo buying intent)
+      const hasThirdPartyIntent = signalTypes.some(t =>
+        t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
+        t.includes('intent') || t.includes('buyer')
+      ) || (l.intent_score || 0) >= 15 // High intent score indicates 3rd party signals
+      if (hasThirdPartyIntent) signalCategories++
+
+      // Category 4: Company-level signals from AI research
       const transformationSignals = l.ai_research?.company?.transformation_signals || {}
       const whyNowSignals = l.ai_research?.company?.why_now_signals || {}
       const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
       const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
+      if (hasTransformationSignal || hasWhyNowSignal) signalCategories++
 
-      // Check for external intent signals (Lusha, etc.)
-      const hasExternalIntent = (l.intent_score || 0) >= 20 // High intent from 3rd party
-
-      // Signal diversity: multi-touchpoint OR (1st party + company/external signals)
-      const hasCompanySignals = hasTransformationSignal || hasWhyNowSignal || hasExternalIntent
-      const hasSignalDiversity = hasMultiTouchpoint || hasCompanySignals
-
-      if (!hasSignalDiversity) {
+      // Need 2+ signal categories for diversity
+      if (signalCategories < 2) {
         return false
       }
 

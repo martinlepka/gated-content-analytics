@@ -160,7 +160,11 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
               // 1. Known company
               // 2. Finance persona (>=18) OR P0/P1 tier
               // 3. ICP fit (>=30)
-              // 4. Signal diversity (multi-touchpoint OR company signals)
+              // 4. Signal diversity (2+ CATEGORIES):
+              //    - Cat 1: 1st party form (webflow_*)
+              //    - Cat 2: 1st party visit (RB2B)
+              //    - Cat 3: 3rd party intent (G2, Lusha)
+              //    - Cat 4: Company signals (transformation, why_now)
               // ============================================================
 
               const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
@@ -172,15 +176,30 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
               const isRejected = lead.action_status === 'rejected'
               const isDoneNotMql = lead.action_status === 'done' && !lead.rejection_reason?.includes('auto_linked')
 
-              // Check each Pre-MQL criterion (ALL must be met)
+              // Signal categories
               const signalHistory = lead.context_for_outreach?.signal_history || []
-              const touchpointCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+              const signalTypes = Array.isArray(signalHistory)
+                ? signalHistory.map(s => (s.type || '').toLowerCase())
+                : []
 
+              const signalCategories = {
+                webflowForm: lead.trigger_signal_type?.startsWith('webflow_') ||
+                            signalTypes.some(t => t.startsWith('webflow')),
+                rb2bVisit: signalTypes.some(t =>
+                            t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view')),
+                thirdPartyIntent: signalTypes.some(t =>
+                            t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
+                            t.includes('intent') || t.includes('buyer')) || (lead.intent_score || 0) >= 15,
+                companySignals: hasTransformationSignal || hasWhyNowSignal,
+              }
+              const signalCategoryCount = Object.values(signalCategories).filter(v => v).length
+
+              // Check each Pre-MQL criterion (ALL must be met)
               const criteria = {
                 knownCompany: !!(lead.company_name && lead.company_name.trim() !== ''),
                 financePersona: (lead.persona_score || 0) >= 18 || lead.signal_tier === 'P0' || lead.signal_tier === 'P1',
                 icpFit: (lead.icp_fit_score || 0) >= 30,
-                signalDiversity: touchpointCount >= 2 || hasTransformationSignal || hasWhyNowSignal || (lead.intent_score || 0) >= 20,
+                signalDiversity: signalCategoryCount >= 2,
               }
 
               const allCriteriaMet = Object.values(criteria).every(v => v)
@@ -246,16 +265,27 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                     </div>
                     <div className={`flex items-center gap-2 ${criteria.signalDiversity ? 'text-emerald-700' : 'text-red-500'}`}>
                       <span>{criteria.signalDiversity ? '✓' : '✗'}</span>
-                      <span>Signal Diversity</span>
-                      {criteria.signalDiversity && (
-                        <span className="text-emerald-600 font-medium">
-                          {touchpointCount >= 2 && `(${touchpointCount} touchpoints)`}
-                          {hasTransformationSignal && '(transformation)'}
-                          {hasWhyNowSignal && '(why now)'}
-                          {(lead.intent_score || 0) >= 20 && `(intent: ${lead.intent_score})`}
-                        </span>
-                      )}
-                      {!criteria.signalDiversity && <span className="text-red-500 font-medium">(needs 2+ signals)</span>}
+                      <span>Signal Diversity (2+ categories)</span>
+                      <span className={criteria.signalDiversity ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>
+                        ({signalCategoryCount}/4)
+                      </span>
+                    </div>
+                    {/* Signal category breakdown */}
+                    <div className="pl-4 space-y-0.5 text-[9px] text-gray-500">
+                      <div className={signalCategories.webflowForm ? 'text-cyan-600' : ''}>
+                        {signalCategories.webflowForm ? '✓' : '○'} Webflow form
+                      </div>
+                      <div className={signalCategories.rb2bVisit ? 'text-blue-600' : ''}>
+                        {signalCategories.rb2bVisit ? '✓' : '○'} RB2B visit
+                      </div>
+                      <div className={signalCategories.thirdPartyIntent ? 'text-purple-600' : ''}>
+                        {signalCategories.thirdPartyIntent ? '✓' : '○'} 3rd party intent (G2/Lusha)
+                      </div>
+                      <div className={signalCategories.companySignals ? 'text-amber-600' : ''}>
+                        {signalCategories.companySignals ? '✓' : '○'} Company signals
+                        {hasTransformationSignal && ' (transformation)'}
+                        {hasWhyNowSignal && ' (why now)'}
+                      </div>
                     </div>
                   </div>
 
