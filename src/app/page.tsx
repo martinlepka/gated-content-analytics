@@ -106,43 +106,69 @@ export default function DashboardPage() {
   // PRE-MQL DETECTION HELPER
   // ============================================================
   // Must match criteria in LeadMQLFunnel.tsx and LeadDetailModal.tsx
-  // Pre-MQL = actionable lead with MQL potential (excludes rejected/spam)
+  //
+  // Pre-MQL requires ALL of:
+  // 1. Known company (has company_name)
+  // 2. Finance persona (>=18) OR P0/P1 tier
+  // 3. ICP fit (>=30)
+  // 4. Signal diversity (multi-touchpoint OR company signals)
+  // ============================================================
   const isPreMql = (lead: Lead): boolean => {
     // EXCLUDE rejected leads
     if (lead.action_status === 'rejected') return false
     // EXCLUDE done leads that are NOT MQL
     if (lead.action_status === 'done' && !lead.rejection_reason?.includes('auto_linked')) return false
 
-    // 1. High tier
-    if (lead.signal_tier === 'P0' || lead.signal_tier === 'P1') return true
-    // 2. High persona score
-    if ((lead.persona_score || 0) >= 18) return true
-    // 3. High intent score
-    if ((lead.intent_score || 0) >= 20) return true
-    // 4. Company signals
+    // 1. Must have known company
+    if (!lead.company_name || lead.company_name.trim() === '') return false
+
+    // 2. Must be finance persona OR high tier
+    const isFinancePersona = (lead.persona_score || 0) >= 18
+    const isHighTier = lead.signal_tier === 'P0' || lead.signal_tier === 'P1'
+    if (!isFinancePersona && !isHighTier) return false
+
+    // 3. Must have ICP fit
+    if ((lead.icp_fit_score || 0) < 30) return false
+
+    // 4. Must have signal diversity
+    const signalHistory = lead.context_for_outreach?.signal_history || []
+    const touchpointCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+    const hasMultiTouchpoint = touchpointCount >= 2
+
     const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
     const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
     const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
     const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-    if (hasTransformationSignal || hasWhyNowSignal) return true
-    // 5. Good ICP + intent
-    if ((lead.icp_fit_score || 0) >= 40 && (lead.intent_score || 0) >= 12) return true
-    return false
+    const hasExternalIntent = (lead.intent_score || 0) >= 20
+
+    const hasCompanySignals = hasTransformationSignal || hasWhyNowSignal || hasExternalIntent
+    if (!hasMultiTouchpoint && !hasCompanySignals) return false
+
+    return true
   }
 
   const isMql = (lead: Lead): boolean => {
-    // MQL = accepted to Discovery/TAL (must pass Pre-MQL criteria check without exclusions)
+    // MQL = accepted to Discovery/TAL + meets Pre-MQL criteria
     if (lead.action_status !== 'done' || !lead.rejection_reason?.includes('auto_linked')) return false
-    // Check if meets any Pre-MQL criteria (without status exclusions since MQL is done+auto_linked)
-    if (lead.signal_tier === 'P0' || lead.signal_tier === 'P1') return true
-    if ((lead.persona_score || 0) >= 18) return true
-    if ((lead.intent_score || 0) >= 20) return true
+
+    // Check Pre-MQL criteria (without status exclusions)
+    if (!lead.company_name || lead.company_name.trim() === '') return false
+    const isFinancePersona = (lead.persona_score || 0) >= 18
+    const isHighTier = lead.signal_tier === 'P0' || lead.signal_tier === 'P1'
+    if (!isFinancePersona && !isHighTier) return false
+    if ((lead.icp_fit_score || 0) < 30) return false
+
+    // Signal diversity check
+    const signalHistory = lead.context_for_outreach?.signal_history || []
+    const hasMultiTouchpoint = (Array.isArray(signalHistory) ? signalHistory.length : 0) >= 2
     const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
     const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
-    if (Object.values(transformationSignals).some(v => v === true)) return true
-    if (Object.values(whyNowSignals).some(v => v === true)) return true
-    if ((lead.icp_fit_score || 0) >= 40 && (lead.intent_score || 0) >= 12) return true
-    return false
+    const hasCompanySignals = Object.values(transformationSignals).some(v => v === true) ||
+                              Object.values(whyNowSignals).some(v => v === true) ||
+                              (lead.intent_score || 0) >= 20
+    if (!hasMultiTouchpoint && !hasCompanySignals) return false
+
+    return true
   }
 
   const filteredLeads = useMemo(() => {

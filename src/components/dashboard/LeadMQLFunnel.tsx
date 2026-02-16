@@ -37,64 +37,71 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
     // ============================================================
     // PRE-MQL DEFINITION (Updated Feb 2026)
     // ============================================================
-    // Pre-MQL = Lead with MQL potential, should be reviewed by sales team
+    // Pre-MQL = Quality lead ready for sales review
     //
-    // EXCLUDES: rejected leads, spam, tests (only actionable leads)
+    // MUST MEET ALL CONDITIONS:
+    // 1. Known company (has company_name, not personal email)
+    // 2. Finance persona (persona_score >= 18) OR P0/P1 tier
+    // 3. ICP fit (icp_fit_score >= 30)
+    // 4. Signal diversity (2+ signals):
+    //    - Multi-touchpoint (2+ engagements in signal_history)
+    //    - OR 1st party + company signals (transformation, why_now, intent)
     //
-    // Lead is Pre-MQL if it meets ANY of these criteria:
-    // 1. TIER P0/P1 - Already high quality by scoring model
-    // 2. HIGH PERSONA (persona_score >= 18) - Finance decision maker
-    // 3. HIGH INTENT (intent_score >= 20) - Demo, contact, pricing page
-    // 4. COMPANY SIGNALS - Has transformation OR why_now signals from AI research
-    // 5. GOOD ICP + INTENT - icp_fit_score >= 40 AND intent_score >= 12
-    //
-    // MQL = Pre-MQL + accepted to Discovery/TAL in GTM app
+    // EXCLUDES: rejected, done without auto_link
+    // MQL = Pre-MQL + accepted to Discovery/TAL
     // ============================================================
     const preMqls = filteredLeads.filter(l => {
-      // EXCLUDE rejected leads - they are disqualified
+      // EXCLUDE rejected leads
       if (l.action_status === 'rejected') {
         return false
       }
 
-      // EXCLUDE done leads that are NOT MQL (manually processed without linking)
+      // EXCLUDE done leads that are NOT MQL
       if (l.action_status === 'done' && !l.rejection_reason?.includes('auto_linked')) {
         return false
       }
 
-      // 1. Already high quality tier
-      if (l.signal_tier === 'P0' || l.signal_tier === 'P1') {
-        return true
+      // CONDITION 1: Must have known company
+      if (!l.company_name || l.company_name.trim() === '') {
+        return false
       }
 
-      // 2. High persona score (finance decision maker)
-      // persona_score maps to legacy calculatePersonaScore which gives:
-      // CFO=25, VP Finance=22, Controller/FP&A=20, Director=18
-      if ((l.persona_score || 0) >= 18) {
-        return true
+      // CONDITION 2: Must be finance persona OR high tier
+      const isFinancePersona = (l.persona_score || 0) >= 18
+      const isHighTier = l.signal_tier === 'P0' || l.signal_tier === 'P1'
+      if (!isFinancePersona && !isHighTier) {
+        return false
       }
 
-      // 3. High intent score (demo, contact, pricing page visit)
-      // Demo request = 25 pts, pricing page = 20 pts, content download = 12 pts
-      if ((l.intent_score || 0) >= 20) {
-        return true
+      // CONDITION 3: Must have ICP fit
+      if ((l.icp_fit_score || 0) < 30) {
+        return false
       }
 
-      // 4. Company-level buying signals from AI research
+      // CONDITION 4: Must have signal diversity (2+ signals)
+      // Count 1st party signals (touchpoints)
+      const signalHistory = l.context_for_outreach?.signal_history || []
+      const touchpointCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+      const hasMultiTouchpoint = touchpointCount >= 2
+
+      // Count company-level signals
       const transformationSignals = l.ai_research?.company?.transformation_signals || {}
       const whyNowSignals = l.ai_research?.company?.why_now_signals || {}
       const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
       const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-      if (hasTransformationSignal || hasWhyNowSignal) {
-        return true
+
+      // Check for external intent signals (Lusha, etc.)
+      const hasExternalIntent = (l.intent_score || 0) >= 20 // High intent from 3rd party
+
+      // Signal diversity: multi-touchpoint OR (1st party + company/external signals)
+      const hasCompanySignals = hasTransformationSignal || hasWhyNowSignal || hasExternalIntent
+      const hasSignalDiversity = hasMultiTouchpoint || hasCompanySignals
+
+      if (!hasSignalDiversity) {
+        return false
       }
 
-      // 5. Good ICP fit with some intent (content download at minimum)
-      // This captures leads that are good fit AND engaged
-      if ((l.icp_fit_score || 0) >= 40 && (l.intent_score || 0) >= 12) {
-        return true
-      }
-
-      return false
+      return true
     })
 
     // MQL = Pre-MQL that has been accepted to Discovery/TAL
