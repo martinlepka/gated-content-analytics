@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [signalTypeFilter, setSignalTypeFilter] = useState<string>('')
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [preMqlFilter, setPreMqlFilter] = useState<'all' | 'preMql' | 'mql' | 'lead'>('all')
 
   // Dropdown open states for multiselect
   const [tierDropdownOpen, setTierDropdownOpen] = useState(false)
@@ -101,6 +102,32 @@ export default function DashboardPage() {
     }
   }, [leads])
 
+  // ============================================================
+  // PRE-MQL DETECTION HELPER
+  // ============================================================
+  // Must match criteria in LeadMQLFunnel.tsx and LeadDetailModal.tsx
+  const isPreMql = (lead: Lead): boolean => {
+    // 1. High tier
+    if (lead.signal_tier === 'P0' || lead.signal_tier === 'P1') return true
+    // 2. High persona score
+    if ((lead.persona_score || 0) >= 18) return true
+    // 3. High intent score
+    if ((lead.intent_score || 0) >= 20) return true
+    // 4. Company signals
+    const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
+    const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
+    const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
+    const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
+    if (hasTransformationSignal || hasWhyNowSignal) return true
+    // 5. Good ICP + intent
+    if ((lead.icp_fit_score || 0) >= 40 && (lead.intent_score || 0) >= 12) return true
+    return false
+  }
+
+  const isMql = (lead: Lead): boolean => {
+    return isPreMql(lead) && lead.action_status === 'done' && (lead.rejection_reason?.includes('auto_linked') || false)
+  }
+
   const filteredLeads = useMemo(() => {
     let filtered = leads.filter(lead => {
       // Date filtering
@@ -125,6 +152,10 @@ export default function DashboardPage() {
       if (sourceFilter.length > 0 && !sourceFilter.includes(lead.utm_source || '')) return false
       if (statusFilter.length > 0 && !statusFilter.includes(lead.action_status)) return false
       if (contentFilter && lead.content_name !== contentFilter) return false
+      // Pre-MQL filter
+      if (preMqlFilter === 'preMql' && !isPreMql(lead)) return false
+      if (preMqlFilter === 'mql' && !isMql(lead)) return false
+      if (preMqlFilter === 'lead' && isPreMql(lead)) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matches =
@@ -184,7 +215,7 @@ export default function DashboardPage() {
     })
 
     return filtered
-  }, [leads, timeFilter, dateFrom, dateTo, tierFilter, sourceFilter, statusFilter, contentFilter, searchQuery, sortColumn, sortDirection])
+  }, [leads, timeFilter, dateFrom, dateTo, tierFilter, sourceFilter, statusFilter, contentFilter, searchQuery, sortColumn, sortDirection, preMqlFilter])
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -492,6 +523,37 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Pre-MQL Filter */}
+          <div className="flex items-center gap-1 ml-2">
+            <span className="text-[9px] text-gray-500 mr-1">Funnel:</span>
+            <div className="flex">
+              <button
+                onClick={() => setPreMqlFilter('all')}
+                className={`cyber-toggle ${preMqlFilter === 'all' ? 'active' : ''}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setPreMqlFilter('preMql')}
+                className={`cyber-toggle ${preMqlFilter === 'preMql' ? 'active bg-amber-100' : ''}`}
+              >
+                Pre-MQL
+              </button>
+              <button
+                onClick={() => setPreMqlFilter('mql')}
+                className={`cyber-toggle ${preMqlFilter === 'mql' ? 'active bg-emerald-100' : ''}`}
+              >
+                MQL
+              </button>
+              <button
+                onClick={() => setPreMqlFilter('lead')}
+                className={`cyber-toggle ${preMqlFilter === 'lead' ? 'active' : ''}`}
+              >
+                Lead
+              </button>
+            </div>
+          </div>
+
           <div className="ml-auto text-[10px] text-gray-500 font-mono">{filteredLeads.length} records</div>
         </div>
 
@@ -675,9 +737,17 @@ export default function DashboardPage() {
                           <span className="font-cyber text-[12px] text-gray-800">{lead.total_score}</span>
                         </td>
                         <td className="text-center">
-                          <span className={`inline-block px-1.5 py-0.5 text-[9px] font-cyber font-bold rounded ${tierClass}`}>
-                            {lead.signal_tier}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className={`inline-block px-1.5 py-0.5 text-[9px] font-cyber font-bold rounded ${tierClass}`}>
+                              {lead.signal_tier}
+                            </span>
+                            {isPreMql(lead) && !isMql(lead) && (
+                              <span className="text-[7px] text-amber-600 font-semibold">PRE-MQL</span>
+                            )}
+                            {isMql(lead) && (
+                              <span className="text-[7px] text-emerald-600 font-semibold">MQL</span>
+                            )}
+                          </div>
                         </td>
                         <td className="text-center">
                           <div className="flex flex-col items-center gap-0.5">

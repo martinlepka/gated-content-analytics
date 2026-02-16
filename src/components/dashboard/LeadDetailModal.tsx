@@ -153,17 +153,37 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
 
             {/* MQL Qualification Status */}
             {(() => {
-              // Calculate qualification status
-              const signalHistory = lead.context_for_outreach?.signal_history || []
-              const personSignalCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+              // ============================================================
+              // PRE-MQL CRITERIA (Must match LeadMQLFunnel.tsx)
+              // ============================================================
+              // Pre-MQL = Lead with MQL potential
+              // Lead is Pre-MQL if it meets ANY of these criteria:
+              // 1. TIER P0/P1
+              // 2. HIGH PERSONA (persona_score >= 18)
+              // 3. HIGH INTENT (intent_score >= 20)
+              // 4. COMPANY SIGNALS (transformation OR why_now)
+              // 5. GOOD ICP + INTENT (icp >= 40 AND intent >= 12)
+              // ============================================================
+
               const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
               const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
               const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
               const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-              const companySignalCount = (hasTransformationSignal ? 1 : 0) + (hasWhyNowSignal ? 1 : 0)
-              const totalSignals = Math.max(personSignalCount, 1) + companySignalCount
-              const isPreMql = totalSignals >= 2
+
+              // Check each Pre-MQL criterion
+              const criteria = {
+                highTier: lead.signal_tier === 'P0' || lead.signal_tier === 'P1',
+                highPersona: (lead.persona_score || 0) >= 18,
+                highIntent: (lead.intent_score || 0) >= 20,
+                companySignals: hasTransformationSignal || hasWhyNowSignal,
+                icpWithIntent: (lead.icp_fit_score || 0) >= 40 && (lead.intent_score || 0) >= 12,
+              }
+
+              const isPreMql = Object.values(criteria).some(v => v)
               const isMql = isPreMql && lead.action_status === 'done' && lead.rejection_reason?.includes('auto_linked')
+
+              // Count how many criteria are met
+              const criteriaMetCount = Object.values(criteria).filter(v => v).length
 
               return (
                 <div className={`border rounded-lg p-3 ${
@@ -181,29 +201,53 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                       {isMql ? '✓ MQL' : isPreMql ? 'PRE-MQL' : 'LEAD'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-gray-500">Person signals:</span>
-                      <span className="ml-1 font-medium">{Math.max(personSignalCount, 1)}</span>
-                      {personSignalCount > 1 && (
-                        <span className="ml-1 text-amber-600">({personSignalCount} touchpoints)</span>
-                      )}
+
+                  {/* Pre-MQL Criteria Checklist */}
+                  <div className="space-y-1 text-[10px]">
+                    <div className={`flex items-center gap-2 ${criteria.highTier ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      <span>{criteria.highTier ? '✓' : '○'}</span>
+                      <span>P0/P1 Tier</span>
+                      {criteria.highTier && <span className="text-emerald-600 font-medium">({lead.signal_tier})</span>}
                     </div>
-                    <div>
-                      <span className="text-gray-500">Company signals:</span>
-                      <span className="ml-1 font-medium">{companySignalCount}</span>
-                      {hasTransformationSignal && <span className="ml-1 text-blue-600">(transformation)</span>}
-                      {hasWhyNowSignal && <span className="ml-1 text-purple-600">(why now)</span>}
+                    <div className={`flex items-center gap-2 ${criteria.highPersona ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      <span>{criteria.highPersona ? '✓' : '○'}</span>
+                      <span>Finance Decision Maker</span>
+                      {criteria.highPersona && <span className="text-emerald-600 font-medium">(persona: {lead.persona_score})</span>}
+                    </div>
+                    <div className={`flex items-center gap-2 ${criteria.highIntent ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      <span>{criteria.highIntent ? '✓' : '○'}</span>
+                      <span>High Intent Signal</span>
+                      {criteria.highIntent && <span className="text-emerald-600 font-medium">(intent: {lead.intent_score})</span>}
+                    </div>
+                    <div className={`flex items-center gap-2 ${criteria.companySignals ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      <span>{criteria.companySignals ? '✓' : '○'}</span>
+                      <span>Company Transformation</span>
+                      {hasTransformationSignal && <span className="text-blue-600 font-medium">(digital/data)</span>}
+                      {hasWhyNowSignal && <span className="text-purple-600 font-medium">(why now)</span>}
+                    </div>
+                    <div className={`flex items-center gap-2 ${criteria.icpWithIntent ? 'text-emerald-700' : 'text-gray-400'}`}>
+                      <span>{criteria.icpWithIntent ? '✓' : '○'}</span>
+                      <span>Good ICP + Intent</span>
+                      {criteria.icpWithIntent && <span className="text-emerald-600 font-medium">(ICP: {lead.icp_fit_score}, intent: {lead.intent_score})</span>}
                     </div>
                   </div>
+
+                  {/* Status message */}
                   {isPreMql && !isMql && (
                     <div className="mt-2 text-[10px] text-amber-700 bg-amber-100 rounded px-2 py-1">
-                      → Move to Discovery in GTM app to convert to MQL
+                      {criteriaMetCount >= 2
+                        ? `→ Strong Pre-MQL (${criteriaMetCount} criteria met) - Review in GTM app`
+                        : '→ Pre-MQL - Move to Discovery in GTM app to convert to MQL'}
                     </div>
                   )}
                   {isMql && (
                     <div className="mt-2 text-[10px] text-emerald-700 bg-emerald-100 rounded px-2 py-1">
                       ✓ Accepted to Discovery/TAL
+                    </div>
+                  )}
+                  {!isPreMql && (
+                    <div className="mt-2 text-[10px] text-gray-500 bg-gray-100 rounded px-2 py-1">
+                      Lead needs stronger signals to qualify as Pre-MQL
                     </div>
                   )}
                 </div>

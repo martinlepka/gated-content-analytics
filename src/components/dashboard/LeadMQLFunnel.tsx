@@ -34,23 +34,55 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
     const working = filteredLeads.filter(l => l.action_status === 'working' || l.action_status === 'researching')
     const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
 
-    // Pre-MQL = 2+ combined signals (person + company) - shows buying intent
+    // ============================================================
+    // PRE-MQL DEFINITION (Updated Feb 2026)
+    // ============================================================
+    // Pre-MQL = Lead with MQL potential, should be reviewed by sales team
+    // Lead is Pre-MQL if it meets ANY of these criteria:
+    //
+    // 1. TIER P0/P1 - Already high quality by scoring model
+    // 2. HIGH PERSONA (persona_score >= 18) - Finance decision maker
+    // 3. HIGH INTENT (intent_score >= 20) - Demo, contact, pricing page
+    // 4. COMPANY SIGNALS - Has transformation OR why_now signals from AI research
+    // 5. GOOD ICP + INTENT - icp_fit_score >= 40 AND intent_score >= 12
+    //
     // MQL = Pre-MQL + accepted to Discovery/TAL in GTM app
+    // ============================================================
     const preMqls = filteredLeads.filter(l => {
-      // Count person-level signals
-      const signalHistory = l.context_for_outreach?.signal_history || []
-      const personSignalCount = Array.isArray(signalHistory) ? signalHistory.length : 0
+      // 1. Already high quality tier
+      if (l.signal_tier === 'P0' || l.signal_tier === 'P1') {
+        return true
+      }
 
-      // Count company-level buying signals
+      // 2. High persona score (finance decision maker)
+      // persona_score maps to legacy calculatePersonaScore which gives:
+      // CFO=25, VP Finance=22, Controller/FP&A=20, Director=18
+      if ((l.persona_score || 0) >= 18) {
+        return true
+      }
+
+      // 3. High intent score (demo, contact, pricing page visit)
+      // Demo request = 25 pts, pricing page = 20 pts, content download = 12 pts
+      if ((l.intent_score || 0) >= 20) {
+        return true
+      }
+
+      // 4. Company-level buying signals from AI research
       const transformationSignals = l.ai_research?.company?.transformation_signals || {}
       const whyNowSignals = l.ai_research?.company?.why_now_signals || {}
       const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
       const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-      const companySignalCount = (hasTransformationSignal ? 1 : 0) + (hasWhyNowSignal ? 1 : 0)
+      if (hasTransformationSignal || hasWhyNowSignal) {
+        return true
+      }
 
-      // Total signals = person + company (1 download counts as 1)
-      const totalSignals = Math.max(personSignalCount, 1) + companySignalCount
-      return totalSignals >= 2
+      // 5. Good ICP fit with some intent (content download at minimum)
+      // This captures leads that are good fit AND engaged
+      if ((l.icp_fit_score || 0) >= 40 && (l.intent_score || 0) >= 12) {
+        return true
+      }
+
+      return false
     })
 
     // MQL = Pre-MQL that has been accepted to Discovery/TAL

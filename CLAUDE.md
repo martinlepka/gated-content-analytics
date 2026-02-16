@@ -160,6 +160,39 @@ Leads are scored automatically when created:
 | **P2** | Total >= 60 | Standard follow-up |
 | **P3** | Total < 60 | Nurture only |
 
+### 5b. Pre-MQL / MQL Funnel (Updated Feb 2026)
+
+The Lead → Pre-MQL → MQL funnel helps sales teams prioritize which leads to review.
+
+**Pre-MQL Definition:**
+A lead is classified as Pre-MQL if it meets ANY of these criteria:
+1. **Tier P0/P1** - Already high quality by scoring model
+2. **High Persona** (persona_score >= 18) - Finance decision maker (CFO=25, VP Finance=22, Controller=20, FP&A=20)
+3. **High Intent** (intent_score >= 20) - Demo request, contact form, pricing page visit
+4. **Company Signals** - Has transformation OR why_now signals from AI research
+5. **Good ICP + Intent** - icp_fit_score >= 40 AND intent_score >= 12 (content download)
+
+**MQL Definition:**
+MQL = Pre-MQL + Accepted to Discovery/TAL in GTM app (action_status = 'done' AND rejection_reason contains 'auto_linked')
+
+**Funnel Workflow:**
+```
+Lead (raw download) → Pre-MQL (meets criteria) → MQL (accepted in GTM app)
+       ↓                      ↓                          ↓
+    Nurture              Review daily           In sales pipeline
+```
+
+**Dashboard Features:**
+- **Funnel Card**: Shows Lead → Pre-MQL → MQL conversion with click-to-view details
+- **Funnel Filter**: Filter table by All / Pre-MQL / MQL / Lead
+- **Table Badges**: PRE-MQL / MQL shown under Tier column
+- **Detail Modal**: Shows which Pre-MQL criteria are met
+
+**Files implementing Pre-MQL logic:**
+- `src/components/dashboard/LeadMQLFunnel.tsx` - Funnel visualization
+- `src/components/dashboard/LeadDetailModal.tsx` - Criteria checklist
+- `src/app/page.tsx` - isPreMql() and isMql() helper functions, filter
+
 ### 6. Lead Lifecycle (Synced with GTM App)
 
 Records are **never deleted** - status changes tracked. Statuses are **synced with GTM Inbox**.
@@ -375,6 +408,14 @@ npx supabase functions deploy gated-content-api --project-ref jhglcgljsporzelhsv
 ---
 
 ## Changelog
+
+### 2026-02-16
+- **Pre-MQL/MQL Funnel overhaul**: New consistent Pre-MQL definition across all components
+- **Pre-MQL criteria expanded**: Now includes tier P0/P1, high persona (>=18), high intent (>=20), company signals, or good ICP+intent
+- **Funnel filter**: Added "Funnel: All / Pre-MQL / MQL / Lead" filter buttons
+- **Table badges**: PRE-MQL and MQL labels shown under Tier column
+- **Modal checklist**: Shows which Pre-MQL criteria are met with checkmarks
+- **Documentation**: Added section 5b explaining Pre-MQL/MQL funnel
 
 ### 2026-02-09
 - **Status sync with GTM app**: Statuses now match GTM Inbox (NEW/WORKING/RESEARCH/ACCEPTED/MERGED/REJECTED)
