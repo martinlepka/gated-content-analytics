@@ -165,33 +165,54 @@ Leads are scored automatically when created:
 The Lead → Pre-MQL → MQL funnel helps sales teams prioritize which leads to review.
 
 **Pre-MQL Definition:**
-A lead is classified as Pre-MQL if it meets ANY of these criteria:
-1. **Tier P0/P1** - Already high quality by scoring model
-2. **High Persona** (persona_score >= 18) - Finance decision maker (CFO=25, VP Finance=22, Controller=20, FP&A=20)
-3. **High Intent** (intent_score >= 20) - Demo request, contact form, pricing page visit
-4. **Company Signals** - Has transformation OR why_now signals from AI research
-5. **Good ICP + Intent** - icp_fit_score >= 40 AND intent_score >= 12 (content download)
+A lead is classified as Pre-MQL if it meets **ALL** of these criteria:
+
+| # | Criterion | Threshold | Description |
+|---|-----------|-----------|-------------|
+| 1 | **Known Company** | company_name exists | Not a personal email without company |
+| 2 | **Finance Persona** | persona_score >= 18 OR P0/P1 tier | CFO=25, VP Finance=22, Controller=20, FP&A=20 |
+| 3 | **ICP Fit** | icp_fit_score >= 30 | Company matches ideal customer profile |
+| 4 | **Signal Diversity** | 2+ signal categories | See categories below |
+
+**Signal Categories (need 2+ for Pre-MQL):**
+
+| Category | Source | Examples |
+|----------|--------|----------|
+| **1. Webflow Form** | 1st party | eBook download, demo request, contact form, newsletter |
+| **2. RB2B Visit** | 1st party | Website identification (pricing page, features, etc.) |
+| **3. 3rd Party Intent** | External | G2 intent, Lusha buying signals, Apollo intent |
+| **4. Company Signals** | AI Research | transformation_signals, why_now_signals (M&A, new CFO, layoffs) |
+
+**Pre-MQL Examples:**
+- Webflow form + RB2B visit = 2 categories ✓
+- Webflow form + G2 intent = 2 categories ✓
+- Webflow form + company transformation = 2 categories ✓
+- Only Webflow form (1 category) = NOT Pre-MQL ✗
 
 **MQL Definition:**
 MQL = Pre-MQL + Accepted to Discovery/TAL in GTM app (action_status = 'done' AND rejection_reason contains 'auto_linked')
 
 **Funnel Workflow:**
 ```
-Lead (raw download) → Pre-MQL (meets criteria) → MQL (accepted in GTM app)
+Lead (raw download) → Pre-MQL (ALL criteria met) → MQL (accepted in GTM app)
        ↓                      ↓                          ↓
     Nurture              Review daily           In sales pipeline
 ```
+
+**Exclusions:**
+- `rejected` leads are excluded from Pre-MQL count
+- `done` leads without `auto_linked` are excluded (processed manually)
 
 **Dashboard Features:**
 - **Funnel Card**: Shows Lead → Pre-MQL → MQL conversion with click-to-view details
 - **Funnel Filter**: Filter table by All / Pre-MQL / MQL / Lead
 - **Table Badges**: PRE-MQL / MQL shown under Tier column
-- **Detail Modal**: Shows which Pre-MQL criteria are met
+- **Detail Modal**: Shows all 4 criteria + signal category breakdown
 
 **Files implementing Pre-MQL logic:**
-- `src/components/dashboard/LeadMQLFunnel.tsx` - Funnel visualization
-- `src/components/dashboard/LeadDetailModal.tsx` - Criteria checklist
-- `src/app/page.tsx` - isPreMql() and isMql() helper functions, filter
+- `src/components/dashboard/LeadMQLFunnel.tsx` - Funnel visualization + criteria logic
+- `src/components/dashboard/LeadDetailModal.tsx` - Criteria checklist + signal categories
+- `src/app/page.tsx` - countSignalCategories(), isPreMql(), isMql() helpers, filter
 
 ### 6. Lead Lifecycle (Synced with GTM App)
 
@@ -410,12 +431,14 @@ npx supabase functions deploy gated-content-api --project-ref jhglcgljsporzelhsv
 ## Changelog
 
 ### 2026-02-16
-- **Pre-MQL/MQL Funnel overhaul**: New consistent Pre-MQL definition across all components
-- **Pre-MQL criteria expanded**: Now includes tier P0/P1, high persona (>=18), high intent (>=20), company signals, or good ICP+intent
+- **Pre-MQL/MQL Funnel overhaul**: Stricter Pre-MQL definition requiring ALL criteria
+- **Signal Categories**: Pre-MQL now requires 2+ signal categories (Webflow, RB2B, G2/Lusha, Company signals)
+- **4 Criteria**: Known company + Finance persona + ICP fit (>=30) + Signal diversity (2+ categories)
+- **Exclusions**: Rejected leads and manually processed leads excluded from Pre-MQL count
 - **Funnel filter**: Added "Funnel: All / Pre-MQL / MQL / Lead" filter buttons
 - **Table badges**: PRE-MQL and MQL labels shown under Tier column
-- **Modal checklist**: Shows which Pre-MQL criteria are met with checkmarks
-- **Documentation**: Added section 5b explaining Pre-MQL/MQL funnel
+- **Modal checklist**: Shows all 4 criteria + signal category breakdown (4 checkboxes)
+- **Documentation**: Updated section 5b with signal categories table
 
 ### 2026-02-09
 - **Status sync with GTM app**: Statuses now match GTM Inbox (NEW/WORKING/RESEARCH/ACCEPTED/MERGED/REJECTED)
