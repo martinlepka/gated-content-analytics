@@ -258,7 +258,7 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                     </div>
                     <div className={`flex items-center gap-2 ${criteria.icpFit ? 'text-emerald-700' : 'text-red-500'}`}>
                       <span>{criteria.icpFit ? '✓' : '✗'}</span>
-                      <span>ICP Fit (>=30)</span>
+                      <span>ICP Fit (≥30)</span>
                       <span className={criteria.icpFit ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>
                         (ICP: {lead.icp_fit_score || 0})
                       </span>

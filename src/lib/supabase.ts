@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-// Supabase GTM project
+// Supabase GTM project - using edge functions only (no direct client)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jhglcgljsporzelhsvvz.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Edge function base URL
 export const EDGE_FUNCTION_URL = `${supabaseUrl}/functions/v1`
