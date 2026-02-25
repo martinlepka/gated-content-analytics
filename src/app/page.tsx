@@ -6,7 +6,7 @@ import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
 import { LeadMQLFunnel } from '@/components/dashboard/LeadMQLFunnel'
-import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2, Info, Calendar } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, TrendingUp, HelpCircle, X, FileText, Building2, Info, Calendar, Download } from 'lucide-react'
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
@@ -288,6 +288,135 @@ export default function DashboardPage() {
     return sortDirection === 'asc'
       ? <ChevronUp className="w-3 h-3 text-neon-cyan" />
       : <ChevronDown className="w-3 h-3 text-neon-cyan" />
+  }
+
+  const exportToCSV = () => {
+    // Helper to safely escape a value for CSV
+    const esc = (val: unknown): string => {
+      if (val === null || val === undefined) return ''
+      const str = String(val)
+      // Wrap in quotes if contains comma, quote, or newline
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"'
+      }
+      return str
+    }
+
+    // Map boolean signal object to comma-separated active signal names
+    const activeSignals = (obj: Record<string, boolean | undefined> | undefined): string => {
+      if (!obj) return ''
+      return Object.entries(obj)
+        .filter(([, v]) => v === true)
+        .map(([k]) => k.replace(/_/g, ' '))
+        .join('; ')
+    }
+
+    const headers = [
+      'Date',
+      'Signal Type',
+      'First Name',
+      'Last Name',
+      'Email',
+      'Title',
+      'Company',
+      'Company Domain',
+      'Industry',
+      'Employee Count',
+      'Total Score',
+      'ICP Fit Score',
+      'Why Now Score',
+      'Intent Score',
+      'Grade',
+      'Tier',
+      'Pre-MQL',
+      'MQL',
+      'Status',
+      'Rejection Reason',
+      'Content Downloaded',
+      'UTM Source',
+      'UTM Medium',
+      'UTM Campaign',
+      'Country',
+      'In Salesforce',
+      'Has AI Research',
+      'Company Overview',
+      'Transformation Signals',
+      'Why Now Signals',
+      'Tech Stack',
+      'Finance Leaders',
+      'Value Driver',
+    ]
+
+    const rows = filteredLeads.map(lead => {
+      const context = lead.context_for_outreach
+      const research = lead.ai_research
+      const company = research?.company
+
+      // Finance leaders: "Name (Title)" separated by semicolons
+      const financeLeaders = research?.finance_leaders_found
+        ?.map(l => `${l.name} (${l.title})`)
+        .join('; ') || ''
+
+      // Tech stack: flatten all categories
+      const techStack = company?.tech_stack_categorized
+        ? Object.values(company.tech_stack_categorized).flat().join('; ')
+        : ''
+
+      // Display status
+      let displayStatus = lead.action_status
+      if (lead.action_status === 'done') {
+        if (lead.rejection_reason?.includes('auto_linked_to_discovery') || lead.rejection_reason?.includes('auto_linked_to_tal')) {
+          displayStatus = 'accepted'
+        } else if (lead.rejection_reason?.includes('auto_linked_existing')) {
+          displayStatus = 'merged'
+        }
+      }
+
+      return [
+        esc(format(parseISO(lead.inbox_entered_at), 'yyyy-MM-dd HH:mm')),
+        esc(lead.signal_type_label || SIGNAL_TYPE_LABELS[lead.trigger_signal_type || ''] || lead.trigger_signal_type || ''),
+        esc(lead.first_name),
+        esc(lead.last_name),
+        esc(lead.email),
+        esc(lead.title),
+        esc(lead.company_name),
+        esc(lead.company_domain),
+        esc(lead.industry),
+        esc(lead.employee_count),
+        esc(lead.total_score),
+        esc(lead.icp_fit_score),
+        esc(lead.persona_score),
+        esc(lead.intent_score),
+        esc(lead.lead_grade),
+        esc(lead.signal_tier),
+        esc(isPreMql(lead) ? 'Yes' : 'No'),
+        esc(isMql(lead) ? 'Yes' : 'No'),
+        esc(displayStatus),
+        esc(lead.rejection_reason),
+        esc(lead.content_name),
+        esc(lead.utm_source || context?.utm_source),
+        esc(context?.utm_medium),
+        esc(lead.utm_campaign || context?.utm_campaign),
+        esc(context?.country),
+        esc(lead.in_salesforce ? 'Yes' : 'No'),
+        esc(lead.has_research ? 'Yes' : 'No'),
+        esc(company?.overview),
+        esc(activeSignals(company?.transformation_signals as Record<string, boolean | undefined>)),
+        esc(activeSignals(company?.why_now_signals as Record<string, boolean | undefined>)),
+        esc(techStack),
+        esc(financeLeaders),
+        esc(research?.recommended_value_driver?.driver),
+      ].join(',')
+    })
+
+    const csvContent = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `leads-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   if (loading) {
@@ -611,7 +740,18 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="ml-auto text-[10px] text-gray-500 font-mono">{filteredLeads.length} records</div>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-[10px] text-gray-500 font-mono">{filteredLeads.length} records</span>
+            <button
+              onClick={exportToCSV}
+              disabled={filteredLeads.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-medium bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 rounded hover:bg-neon-cyan/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title={`Export ${filteredLeads.length} leads to CSV`}
+            >
+              <Download className="w-3 h-3" />
+              Export CSV
+            </button>
+          </div>
         </div>
 
         {/* Table */}
