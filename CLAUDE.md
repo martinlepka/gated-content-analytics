@@ -1,3 +1,13 @@
+<!--
+Script: CLAUDE.md
+Description: Claude Code instructions for Gated Content Analytics — agency-facing Pre-MQL dashboard
+Project: Gated Content Analytics
+Linear Issue: —
+Related Files: ../CLAUDE.md, src/, ../docs/signals/SCORING-MODEL.md
+Author: MartinL
+Created: 2026-02-07
+-->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with the Gated Content Analytics application.
@@ -6,7 +16,7 @@ This file provides guidance to Claude Code when working with the Gated Content A
 
 **Gated Content Analytics** is a standalone Next.js dashboard for agencies to view gated content performance, lead quality, and persona distribution. It uses the same Supabase GTM project and ICP scoring framework as the main GTM app.
 
-## Current Status (2026-02-09)
+## Current Status (2026-03-07)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -475,3 +485,11 @@ npx supabase functions deploy gated-content-api --project-ref jhglcgljsporzelhsv
 - Content and Leads pages
 - Deployed to Vercel
 - AI research auto-trigger added to webflow-webhook
+
+---
+
+## Linear Integration
+
+- **Team**: Marketing (`1c465552-ce88-47aa-934e-abf1aab72cb5`)
+- **Project**: 900 MQLs (`b904dbba-1eb6-4bc6-84de-4609bc48c192`)
+- Reference Linear issues in commits: `type(scope): description [ISSUE-ID]`
