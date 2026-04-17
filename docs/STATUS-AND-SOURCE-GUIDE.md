@@ -32,18 +32,30 @@ There are **two orthogonal classifications** on every lead. Don't confuse them:
 
 ### 1.2 Pre-MQL and MQL (quality classifications, not statuses)
 
-Pre-MQL and MQL are **derived flags** computed in the frontend (see `isPreMql()` and `isMql()` helpers in `src/app/page.tsx`). They are not stored in the DB — the app computes them on the fly based on score + status + signal history.
+Pre-MQL and MQL are **derived flags** computed in the frontend (see `src/lib/mql-classification.ts`). They are not stored in the DB — the app computes them on the fly by counting qualifying touchpoints per email across the full lead set. Model is identical to the Team Outreach inbound-scoring model (`team-outreach/src/lib/inbound-scoring.ts`).
 
 | Label | Triggered when | What it signals |
 |-------|----------------|-----------------|
-| **Pre-MQL** | All four criteria met: (1) known company, (2) persona_score ≥ 18 OR tier P0/P1, (3) icp_fit_score ≥ 30, (4) signals from 2+ different categories. AND the lead is not rejected and not `done` without auto-link. | "The algorithm thinks this lead is worth a sales look." Leading indicator — not yet confirmed by a human. |
-| **MQL** | Pre-MQL criteria met **AND** `action_status = done` with auto-link (= Accepted). | "A human accepted this lead into the pipeline." This is the **paid-campaign success metric** (see `MQL-SUCCESS-DEFINITION.md`). |
+| **Lead** | ICP fit missing OR finance persona missing (or the lead is rejected). | Not yet campaign-quality — firmographic or persona mismatch. |
+| **Pre-MQL** | ICP fit + finance persona + **exactly 1** qualifying touchpoint. | "Fits ICP and looks like a finance leader, engaged once. One more touchpoint turns this into an MQL." |
+| **MQL** | ICP fit + finance persona + **2 or more** qualifying touchpoints. | **Paid-campaign success metric** (see `MQL-SUCCESS-DEFINITION.md`). |
 
-**Signal categories** (need 2+ for Pre-MQL):
-1. Webflow Form (eBook, demo, contact, newsletter)
-2. RB2B website visit (identified visitor)
-3. 3rd party intent (G2, Lusha, Apollo buying signals)
-4. Company signals (transformation / why-now signals from AI research)
+**Qualifying touchpoints** (Tier 1, 1.0 pt each in the shared model):
+- `webflow_content_download` — ebook, guide, whitepaper
+- `webflow_webinar_reg` — webinar registration
+- `webflow_event_reg` — in-person event registration
+- `webflow_demo_request` — demo request
+
+**Not qualifying touchpoints** (list-builders / low-intent):
+- `webflow_newsletter`, `webflow_popup`, `webflow_contact`, `webflow_form` — these mark someone as "on the list," not as a buyer.
+
+**Dedup rule:** same signal type + same content + same day = 1 touchpoint (downloading the same ebook twice in a day counts once).
+
+**ICP fit check:** `icp_fit_score ≥ 30` AND `company_name` present (firmographic — size + industry encoded in the score).
+
+**Finance persona check:** `persona_score ≥ 18`, or fallback title match on CFO / VP Finance / Head of Finance / Controller / FP&A / Finance Director.
+
+**Sales acceptance is NOT part of MQL** — that's a downstream funnel metric, not a campaign-quality metric. A lead can be MQL and still be rejected by sales (competitor, customer, timing); the campaign still did its job.
 
 ---
 

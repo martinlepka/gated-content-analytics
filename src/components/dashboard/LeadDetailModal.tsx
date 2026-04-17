@@ -1,11 +1,14 @@
 'use client'
 
 import { Lead, SIGNAL_TYPE_LABELS } from '@/lib/supabase'
+import { buildTouchpointCounter, hasIcpFit, hasFinancePersona, classifyLead, TIER_1_WEBFLOW_TYPES } from '@/lib/mql-classification'
 import { X, Building2, User, Mail, Briefcase, ExternalLink, Brain, Globe, Sparkles, Target, AlertTriangle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
+import { useMemo } from 'react'
 
 interface LeadDetailModalProps {
   lead: Lead
+  allLeads?: Lead[]
   onClose: () => void
 }
 
@@ -20,10 +23,18 @@ function getTierClass(tier: string): string {
   }
 }
 
-export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
+export function LeadDetailModal({ lead, allLeads, onClose }: LeadDetailModalProps) {
   const research = lead.ai_research
   const context = lead.context_for_outreach
   const isPersonalEmail = PERSONAL_EMAIL_DOMAINS.test(lead.email || '')
+
+  // Per-email touchpoint count (deduped across the full lead set).
+  // If allLeads not provided (backward compat), fall back to counting just this one row.
+  const touchpointCount = useMemo(() => {
+    const leadsForCount = allLeads && allLeads.length > 0 ? allLeads : [lead]
+    const counter = buildTouchpointCounter(leadsForCount)
+    return counter(lead.email)
+  }, [allLeads, lead])
 
   const getScoreColor = (score: number, max: number) => {
     const pct = score / max
@@ -153,82 +164,42 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
 
             {/* MQL Qualification Status */}
             {(() => {
-              // ============================================================
-              // PRE-MQL CRITERIA (Must match LeadMQLFunnel.tsx)
-              // ============================================================
-              // Pre-MQL requires ALL of:
-              // 1. Known company
-              // 2. Finance persona (>=18) OR P0/P1 tier
-              // 3. ICP fit (>=30)
-              // 4. Signal diversity (2+ CATEGORIES):
-              //    - Cat 1: 1st party form (webflow_*)
-              //    - Cat 2: 1st party visit (RB2B)
-              //    - Cat 3: 3rd party intent (G2, Lusha)
-              //    - Cat 4: Company signals (transformation, why_now)
-              // ============================================================
-
-              const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
-              const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
-              const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
-              const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-
-              // Check exclusions
+              // Weighted touchpoint model — see /docs/MQL-SUCCESS-DEFINITION.md
+              //   Lead    — ICP or finance persona missing (or rejected)
+              //   Pre-MQL — ICP + persona + 1 qualifying touchpoint
+              //   MQL     — ICP + persona + 2+ qualifying touchpoints
               const isRejected = lead.action_status === 'rejected'
-              const isDoneNotMql = lead.action_status === 'done' && !lead.rejection_reason?.includes('auto_linked')
+              const icpOk = hasIcpFit(lead)
+              const personaOk = hasFinancePersona(lead)
+              const classification = classifyLead(lead, touchpointCount)
 
-              // Signal categories
-              const signalHistory = lead.context_for_outreach?.signal_history || []
-              const signalTypes = Array.isArray(signalHistory)
-                ? signalHistory.map(s => (s.type || '').toLowerCase())
-                : []
-
-              const signalCategories = {
-                webflowForm: lead.trigger_signal_type?.startsWith('webflow_') ||
-                            signalTypes.some(t => t.startsWith('webflow')),
-                rb2bVisit: signalTypes.some(t =>
-                            t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view')),
-                thirdPartyIntent: signalTypes.some(t =>
-                            t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
-                            t.includes('intent') || t.includes('buyer') || t.includes('bombora')),
-                companySignals: hasTransformationSignal || hasWhyNowSignal,
+              // Style per classification
+              let statusLabel: string
+              let statusClass: string
+              let borderClass: string
+              switch (classification) {
+                case 'mql':
+                  statusLabel = '✓ MQL'
+                  statusClass = 'bg-emerald-200 text-emerald-800'
+                  borderClass = 'border-emerald-300 bg-emerald-50'
+                  break
+                case 'pre_mql':
+                  statusLabel = 'PRE-MQL'
+                  statusClass = 'bg-amber-200 text-amber-800'
+                  borderClass = 'border-amber-300 bg-amber-50'
+                  break
+                case 'rejected':
+                  statusLabel = 'REJECTED'
+                  statusClass = 'bg-red-200 text-red-800'
+                  borderClass = 'border-red-200 bg-red-50'
+                  break
+                default:
+                  statusLabel = 'LEAD'
+                  statusClass = 'bg-gray-200 text-gray-600'
+                  borderClass = 'border-gray-200 bg-gray-50'
               }
-              const signalCategoryCount = Object.values(signalCategories).filter(v => v).length
 
-              // Check each Pre-MQL criterion (ALL must be met)
-              const criteria = {
-                knownCompany: !!(lead.company_name && lead.company_name.trim() !== ''),
-                financePersona: (lead.persona_score || 0) >= 18 || lead.signal_tier === 'P0' || lead.signal_tier === 'P1',
-                icpFit: (lead.icp_fit_score || 0) >= 30,
-                signalDiversity: signalCategoryCount >= 2,
-              }
-
-              const allCriteriaMet = Object.values(criteria).every(v => v)
-              const criteriaMetCount = Object.values(criteria).filter(v => v).length
-              const isMql = allCriteriaMet && lead.action_status === 'done' && lead.rejection_reason?.includes('auto_linked')
-              const isPreMql = allCriteriaMet && !isRejected && !isDoneNotMql && !isMql
-
-              // Determine status label and styling
-              let statusLabel = 'LEAD'
-              let statusClass = 'bg-gray-200 text-gray-600'
-              let borderClass = 'border-gray-200 bg-gray-50'
-
-              if (isMql) {
-                statusLabel = '✓ MQL'
-                statusClass = 'bg-emerald-200 text-emerald-800'
-                borderClass = 'border-emerald-300 bg-emerald-50'
-              } else if (isRejected) {
-                statusLabel = 'REJECTED'
-                statusClass = 'bg-red-200 text-red-800'
-                borderClass = 'border-red-200 bg-red-50'
-              } else if (isDoneNotMql) {
-                statusLabel = 'PROCESSED'
-                statusClass = 'bg-gray-300 text-gray-700'
-                borderClass = 'border-gray-300 bg-gray-100'
-              } else if (isPreMql) {
-                statusLabel = 'PRE-MQL'
-                statusClass = 'bg-amber-200 text-amber-800'
-                borderClass = 'border-amber-300 bg-amber-50'
-              }
+              const thisRowCountsAsTouchpoint = TIER_1_WEBFLOW_TYPES.has(lead.trigger_signal_type || '')
 
               return (
                 <div className={`border rounded-lg p-3 ${borderClass}`}>
@@ -239,80 +210,61 @@ export function LeadDetailModal({ lead, onClose }: LeadDetailModalProps) {
                     </span>
                   </div>
 
-                  {/* Pre-MQL Criteria Checklist - ALL must be met */}
+                  {/* 3-criteria checklist */}
                   <div className="space-y-1 text-[10px]">
-                    <div className={`flex items-center gap-2 ${criteria.knownCompany ? 'text-emerald-700' : 'text-red-500'}`}>
-                      <span>{criteria.knownCompany ? '✓' : '✗'}</span>
-                      <span>Known Company</span>
-                      {criteria.knownCompany && <span className="text-emerald-600 font-medium truncate max-w-[120px]">({lead.company_name})</span>}
-                      {!criteria.knownCompany && <span className="text-red-500 font-medium">(missing)</span>}
+                    <div className={`flex items-center gap-2 ${icpOk ? 'text-emerald-700' : 'text-red-500'}`}>
+                      <span>{icpOk ? '✓' : '✗'}</span>
+                      <span>ICP Fit (firmographic)</span>
+                      <span className={icpOk ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>
+                        ({lead.company_name ? `ICP: ${lead.icp_fit_score || 0}` : 'no company'})
+                      </span>
                     </div>
-                    <div className={`flex items-center gap-2 ${criteria.financePersona ? 'text-emerald-700' : 'text-red-500'}`}>
-                      <span>{criteria.financePersona ? '✓' : '✗'}</span>
-                      <span>Finance Persona / P0-P1</span>
-                      {criteria.financePersona && (
-                        <span className="text-emerald-600 font-medium">
-                          {(lead.persona_score || 0) >= 18 ? `(persona: ${lead.persona_score})` : `(${lead.signal_tier})`}
-                        </span>
+                    <div className={`flex items-center gap-2 ${personaOk ? 'text-emerald-700' : 'text-red-500'}`}>
+                      <span>{personaOk ? '✓' : '✗'}</span>
+                      <span>Finance Leader Persona</span>
+                      <span className={personaOk ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium truncate max-w-[160px]'}>
+                        ({lead.title || '—'}{(lead.persona_score || 0) >= 18 ? `, persona: ${lead.persona_score}` : ''})
+                      </span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${touchpointCount >= 2 ? 'text-emerald-700' : touchpointCount >= 1 ? 'text-amber-600' : 'text-red-500'}`}>
+                      <span>{touchpointCount >= 2 ? '✓✓' : touchpointCount >= 1 ? '✓' : '✗'}</span>
+                      <span>Qualifying Touchpoints (≥2 for MQL)</span>
+                      <span className={touchpointCount >= 2 ? 'text-emerald-600 font-medium' : touchpointCount >= 1 ? 'text-amber-600 font-medium' : 'text-red-500 font-medium'}>
+                        ({touchpointCount} touchpoint{touchpointCount === 1 ? '' : 's'})
+                      </span>
+                    </div>
+                    <div className="pl-4 text-[9px] text-gray-500">
+                      Qualifying types: content download, webinar reg, event reg, demo request. Newsletter / popup / contact form don&apos;t count. Dedup: same content + same day = 1 touchpoint.
+                      {!thisRowCountsAsTouchpoint && (
+                        <div className="text-gray-400 italic mt-0.5">
+                          Note: this particular row ({SIGNAL_TYPE_LABELS[lead.trigger_signal_type || ''] || lead.trigger_signal_type}) is not a qualifying touchpoint type.
+                        </div>
                       )}
-                    </div>
-                    <div className={`flex items-center gap-2 ${criteria.icpFit ? 'text-emerald-700' : 'text-red-500'}`}>
-                      <span>{criteria.icpFit ? '✓' : '✗'}</span>
-                      <span>ICP Fit (≥30)</span>
-                      <span className={criteria.icpFit ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>
-                        (ICP: {lead.icp_fit_score || 0})
-                      </span>
-                    </div>
-                    <div className={`flex items-center gap-2 ${criteria.signalDiversity ? 'text-emerald-700' : 'text-red-500'}`}>
-                      <span>{criteria.signalDiversity ? '✓' : '✗'}</span>
-                      <span>Signal Diversity (2+ categories)</span>
-                      <span className={criteria.signalDiversity ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>
-                        ({signalCategoryCount}/4)
-                      </span>
-                    </div>
-                    {/* Signal category breakdown */}
-                    <div className="pl-4 space-y-0.5 text-[9px] text-gray-500">
-                      <div className={signalCategories.webflowForm ? 'text-cyan-600' : ''}>
-                        {signalCategories.webflowForm ? '✓' : '○'} Webflow form
-                      </div>
-                      <div className={signalCategories.rb2bVisit ? 'text-blue-600' : ''}>
-                        {signalCategories.rb2bVisit ? '✓' : '○'} RB2B visit
-                      </div>
-                      <div className={signalCategories.thirdPartyIntent ? 'text-purple-600' : ''}>
-                        {signalCategories.thirdPartyIntent ? '✓' : '○'} 3rd party intent (G2/Lusha)
-                      </div>
-                      <div className={signalCategories.companySignals ? 'text-amber-600' : ''}>
-                        {signalCategories.companySignals ? '✓' : '○'} Company signals
-                        {hasTransformationSignal && ' (transformation)'}
-                        {hasWhyNowSignal && ' (why now)'}
-                      </div>
                     </div>
                   </div>
 
                   {/* Status message */}
-                  {isPreMql && (
-                    <div className="mt-2 text-[10px] text-amber-700 bg-amber-100 rounded px-2 py-1">
-                      → All criteria met - Review in GTM app to convert to MQL
-                    </div>
-                  )}
-                  {isMql && (
+                  {classification === 'mql' && (
                     <div className="mt-2 text-[10px] text-emerald-700 bg-emerald-100 rounded px-2 py-1">
-                      ✓ Accepted to Discovery/TAL
+                      ✓ Campaign success. ICP + finance persona + 2 or more touchpoints.
                     </div>
                   )}
-                  {isRejected && (
+                  {classification === 'pre_mql' && (
+                    <div className="mt-2 text-[10px] text-amber-700 bg-amber-100 rounded px-2 py-1">
+                      → Pre-MQL. One more qualifying touchpoint and this becomes an MQL.
+                    </div>
+                  )}
+                  {classification === 'rejected' && (
                     <div className="mt-2 text-[10px] text-red-700 bg-red-100 rounded px-2 py-1">
-                      ✗ Disqualified - not counted in Pre-MQL funnel
+                      ✗ Disqualified — excluded from Pre-MQL / MQL counts regardless of touchpoints.
                     </div>
                   )}
-                  {isDoneNotMql && (
-                    <div className="mt-2 text-[10px] text-gray-600 bg-gray-200 rounded px-2 py-1">
-                      Processed manually - not linked to Discovery/TAL
-                    </div>
-                  )}
-                  {!allCriteriaMet && !isRejected && !isDoneNotMql && (
-                    <div className="mt-2 text-[10px] text-gray-500 bg-gray-100 rounded px-2 py-1">
-                      Missing {4 - criteriaMetCount} criteria for Pre-MQL qualification
+                  {classification === 'lead' && !isRejected && (
+                    <div className="mt-2 text-[10px] text-gray-600 bg-gray-100 rounded px-2 py-1">
+                      {!icpOk && !personaOk && 'Missing ICP fit AND finance persona.'}
+                      {!icpOk && personaOk && 'Missing ICP fit (company size / industry match).'}
+                      {icpOk && !personaOk && 'Missing finance-leader persona.'}
+                      {icpOk && personaOk && touchpointCount === 0 && 'ICP + persona OK, but no qualifying touchpoint (newsletter / popup / contact forms don\u2019t count).'}
                     </div>
                   )}
                 </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { fetchGatedContentAPI, OverviewData, TrendData, Lead, SIGNAL_TYPE_LABELS } from '@/lib/supabase'
+import { buildTouchpointCounter, isPreMql as isPreMqlClass, isMql as isMqlClass } from '@/lib/mql-classification'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { PersonaBarChart } from '@/components/charts/PersonaBarChart'
 import { LeadDetailModal } from '@/components/dashboard/LeadDetailModal'
@@ -103,87 +104,23 @@ export default function DashboardPage() {
   }, [leads])
 
   // ============================================================
-  // PRE-MQL DETECTION HELPER
+  // MQL / PRE-MQL CLASSIFICATION (Updated 2026-04-17)
   // ============================================================
-  // Must match criteria in LeadMQLFunnel.tsx and LeadDetailModal.tsx
+  // Mirrors team-outreach/src/lib/inbound-scoring.ts weighted touchpoint
+  // model. See /docs/MQL-SUCCESS-DEFINITION.md for full specification.
   //
-  // Pre-MQL requires ALL of:
-  // 1. Known company (has company_name)
-  // 2. Finance persona (>=18) OR P0/P1 tier
-  // 3. ICP fit (>=30)
-  // 4. Signal diversity (2+ signal CATEGORIES):
-  //    - Cat 1: 1st party form (webflow_*)
-  //    - Cat 2: 1st party visit (RB2B)
-  //    - Cat 3: 3rd party intent (G2, Lusha)
-  //    - Cat 4: Company signals (transformation, why_now)
+  //   Lead    — ICP fit or finance persona missing (or rejected).
+  //   Pre-MQL — ICP + finance persona + exactly 1 qualifying touchpoint.
+  //   MQL     — ICP + finance persona + 2+ qualifying touchpoints.
+  //
+  // Touchpoints counted per email across the full lead set, deduped by
+  // (signal_type, content, day). Sales acceptance is NOT part of the
+  // definition — that's a downstream funnel metric, not campaign quality.
   // ============================================================
-  const countSignalCategories = (lead: Lead): number => {
-    const signalHistory = lead.context_for_outreach?.signal_history || []
-    const signalTypes = Array.isArray(signalHistory)
-      ? signalHistory.map(s => (s.type || '').toLowerCase())
-      : []
+  const getTouchpointCount = useMemo(() => buildTouchpointCounter(leads), [leads])
 
-    let categories = 0
-
-    // Cat 1: 1st party form
-    if (lead.trigger_signal_type?.startsWith('webflow_') ||
-        signalTypes.some(t => t.startsWith('webflow'))) categories++
-
-    // Cat 2: 1st party visit (RB2B)
-    if (signalTypes.some(t =>
-        t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view'))) categories++
-
-    // Cat 3: 3rd party intent (explicit signals only, NOT intent_score)
-    if (signalTypes.some(t =>
-        t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
-        t.includes('intent') || t.includes('buyer') || t.includes('bombora'))) categories++
-
-    // Cat 4: Company signals
-    const transformationSignals = lead.ai_research?.company?.transformation_signals || {}
-    const whyNowSignals = lead.ai_research?.company?.why_now_signals || {}
-    if (Object.values(transformationSignals).some(v => v === true) ||
-        Object.values(whyNowSignals).some(v => v === true)) categories++
-
-    return categories
-  }
-
-  const isPreMql = (lead: Lead): boolean => {
-    // EXCLUDE rejected leads
-    if (lead.action_status === 'rejected') return false
-    // EXCLUDE done leads that are NOT MQL
-    if (lead.action_status === 'done' && !lead.rejection_reason?.includes('auto_linked')) return false
-
-    // 1. Must have known company
-    if (!lead.company_name || lead.company_name.trim() === '') return false
-
-    // 2. Must be finance persona OR high tier
-    const isFinancePersona = (lead.persona_score || 0) >= 18
-    const isHighTier = lead.signal_tier === 'P0' || lead.signal_tier === 'P1'
-    if (!isFinancePersona && !isHighTier) return false
-
-    // 3. Must have ICP fit
-    if ((lead.icp_fit_score || 0) < 30) return false
-
-    // 4. Must have 2+ signal categories
-    if (countSignalCategories(lead) < 2) return false
-
-    return true
-  }
-
-  const isMql = (lead: Lead): boolean => {
-    // MQL = accepted to Discovery/TAL + meets Pre-MQL criteria
-    if (lead.action_status !== 'done' || !lead.rejection_reason?.includes('auto_linked')) return false
-
-    // Check Pre-MQL criteria (without status exclusions)
-    if (!lead.company_name || lead.company_name.trim() === '') return false
-    const isFinancePersona = (lead.persona_score || 0) >= 18
-    const isHighTier = lead.signal_tier === 'P0' || lead.signal_tier === 'P1'
-    if (!isFinancePersona && !isHighTier) return false
-    if ((lead.icp_fit_score || 0) < 30) return false
-    if (countSignalCategories(lead) < 2) return false
-
-    return true
-  }
+  const isPreMql = (lead: Lead): boolean => isPreMqlClass(lead, getTouchpointCount(lead.email))
+  const isMql = (lead: Lead): boolean => isMqlClass(lead, getTouchpointCount(lead.email))
 
   const filteredLeads = useMemo(() => {
     let filtered = leads.filter(lead => {
@@ -209,10 +146,10 @@ export default function DashboardPage() {
       if (sourceFilter.length > 0 && !sourceFilter.includes(lead.utm_source || '')) return false
       if (statusFilter.length > 0 && !statusFilter.includes(lead.action_status)) return false
       if (contentFilter && lead.content_name !== contentFilter) return false
-      // Pre-MQL filter
+      // Funnel filter — Pre-MQL and MQL are now mutually exclusive (1 vs 2+ touchpoints)
       if (preMqlFilter === 'preMql' && !isPreMql(lead)) return false
       if (preMqlFilter === 'mql' && !isMql(lead)) return false
-      if (preMqlFilter === 'lead' && isPreMql(lead)) return false
+      if (preMqlFilter === 'lead' && (isPreMql(lead) || isMql(lead))) return false
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         const matches =
@@ -722,7 +659,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1 ml-2">
             <span
               className="text-[9px] text-gray-500 mr-1"
-              title="Funnel stage filter. Lead = raw download. Pre-MQL = passes 4 algorithmic criteria (known company + finance persona + ICP fit>=30 + 2+ signal categories). MQL = Pre-MQL AND accepted by sales (campaign success metric)."
+              title="Funnel stage filter. Lead = ICP or finance persona missing. Pre-MQL = ICP + persona OK + 1 touchpoint. MQL = ICP + persona OK + 2+ touchpoints (campaign success metric). Matches Team Outreach inbound scoring."
             >
               Funnel:
             </span>
@@ -737,21 +674,21 @@ export default function DashboardPage() {
               <button
                 onClick={() => setPreMqlFilter('preMql')}
                 className={`cyber-toggle ${preMqlFilter === 'preMql' ? 'active bg-amber-100' : ''}`}
-                title="Show only leads that meet all 4 Pre-MQL criteria (includes both Pre-MQL and MQL leads)."
+                title="Show only Pre-MQLs — ICP + finance persona fit but only 1 qualifying touchpoint."
               >
                 Pre-MQL
               </button>
               <button
                 onClick={() => setPreMqlFilter('mql')}
                 className={`cyber-toggle ${preMqlFilter === 'mql' ? 'active bg-emerald-100' : ''}`}
-                title="Show only MQLs — leads accepted by sales into Discovery/TAL. Paid-campaign success metric."
+                title="Show only MQLs — ICP + finance persona + 2 or more qualifying touchpoints. Paid-campaign success metric."
               >
                 MQL
               </button>
               <button
                 onClick={() => setPreMqlFilter('lead')}
                 className={`cyber-toggle ${preMqlFilter === 'lead' ? 'active' : ''}`}
-                title="Show only raw leads that do NOT yet meet Pre-MQL criteria."
+                title="Show only plain Leads — ICP or finance persona missing (or rejected). Excludes Pre-MQL and MQL."
               >
                 Lead
               </button>
@@ -976,10 +913,10 @@ export default function DashboardPage() {
                             <span className={`inline-block px-1.5 py-0.5 text-[9px] font-cyber font-bold rounded ${tierClass}`}>
                               {lead.signal_tier}
                             </span>
-                            {isPreMql(lead) && !isMql(lead) && (
+                            {isPreMql(lead) && (
                               <span
                                 className="text-[7px] text-amber-600 font-semibold"
-                                title="Pre-MQL: algorithm thinks this lead is worth sales review. Requires ALL 4 criteria: known company + finance persona (score>=18 or P0/P1) + ICP fit>=30 + 2+ signal categories. Not yet confirmed by a human — not the campaign success metric."
+                                title="Pre-MQL: company fits ICP firmographics (size + industry) AND person is a finance leader, but only 1 qualifying touchpoint so far. One more touchpoint (another download, webinar reg, demo request) and this becomes an MQL. Nurture-worthy, not yet a campaign success."
                               >
                                 PRE-MQL
                               </span>
@@ -987,7 +924,7 @@ export default function DashboardPage() {
                             {isMql(lead) && (
                               <span
                                 className="text-[7px] text-emerald-600 font-semibold"
-                                title="MQL: meets Pre-MQL criteria AND sales accepted into Discovery/TAL. THIS is the paid-campaign success metric — the only label that confirms both algorithmic fit and human approval."
+                                title="MQL: company fits ICP firmographics + person is a finance leader + 2 or more qualifying touchpoints with Keboola (same model as Team Outreach inbound scoring). THIS is the paid-campaign success metric."
                               >
                                 MQL
                               </span>
@@ -1017,7 +954,7 @@ export default function DashboardPage() {
       </main>
 
       {selectedLead && (
-        <LeadDetailModal lead={selectedLead} onClose={() => setSelectedLead(null)} />
+        <LeadDetailModal lead={selectedLead} allLeads={leads} onClose={() => setSelectedLead(null)} />
       )}
 
       {/* Help Panel */}

@@ -2,8 +2,9 @@
 
 **For:** Paid social manager optimizing campaign spend.
 **Status:** Draft — requires Martin's sign-off before being used as the campaign success metric.
-**Source of truth:** `GTM/team-outreach/src/lib/inbound-scoring.ts` (weighted touchpoint scoring). This document describes the same model applied to paid social leads.
-**Last updated:** 2026-04-17 (v2 — switched from "4 signal categories" framing to the weighted touchpoint model used in Team Outreach).
+**Source of truth:** `GTM/team-outreach/src/lib/inbound-scoring.ts` (weighted touchpoint scoring, shared helper). This document describes the same model applied to paid social leads.
+**App implementation:** `GTM/Gated Content Analytics/src/lib/mql-classification.ts` (derived from the same spec, same excluded-types list, same dedup rule).
+**Last updated:** 2026-04-17 (v3 — Gated Content Analytics app now implements this definition directly; the "known gap" from v2 is closed).
 
 ---
 
@@ -86,23 +87,27 @@ Whether a sales rep accepts the lead into Discovery/TAL is a downstream process 
 
 ---
 
-## How to read this in the app today — and the known gap
+## How to read this in the app
 
-The existing Gated Content Analytics dashboard has `PRE-MQL` and `MQL` badges, **but they are computed from a different (older) model** (4 "signal categories" + sales acceptance for MQL). As of 2026-04-17:
+As of **2026-04-17**, the Gated Content Analytics app implements this definition directly. The logic lives in `src/lib/mql-classification.ts` and is shared across the downloads table (`page.tsx`), the Lead → Pre-MQL → MQL funnel card (`LeadMQLFunnel.tsx`), and the Lead Detail Modal (`LeadDetailModal.tsx`).
 
-| Label in the app | How the app currently computes it | How this document defines it |
-|------------------|-----------------------------------|------------------------------|
-| **Pre-MQL** badge | `isPreMql()` in `src/app/page.tsx` — requires 2+ signal categories + ICP fit ≥ 30 + persona_score ≥ 18 | 1 touchpoint + ICP + persona |
-| **MQL** badge | `isMql()` = Pre-MQL criteria + sales-accepted status | 2+ touchpoints + ICP + persona (sales acceptance not required) |
+| Label in the app | Meaning |
+|------------------|---------|
+| **Lead** (no badge) | ICP fit or finance persona missing — or the lead was rejected. Not a campaign-quality outcome. |
+| **PRE-MQL** (amber badge) | ICP + finance persona + **1** qualifying touchpoint. Nurture to second touchpoint. |
+| **MQL** (green badge) | ICP + finance persona + **2 or more** qualifying touchpoints. Campaign success. |
 
-**Implication for the ads manager *right now*:**
-- The **MQL** badge in today's app is a *conservative* MQL (it also requires sales acceptance). If you count only those, you will *undercount* the true MQL population — but everything you count is definitely real.
-- The **Pre-MQL** badge in today's app is a *stricter* Pre-MQL (2+ signal categories, not just 1 touchpoint). So today's "Pre-MQL" column mostly matches the new "MQL" definition minus sales acceptance.
+**Qualifying Tier-1 touchpoints** (each = 1 point):
+- `webflow_content_download` (ebook, guide, whitepaper)
+- `webflow_webinar_reg` (webinar registration)
+- `webflow_event_reg` (in-person event registration)
+- `webflow_demo_request` (demo request)
 
-**Recommended interim rule:**
-Until the app is updated, use the CSV export and compute MQL yourself by counting unique Tier-1 touchpoints per email address across all `inbox_leads` rows (same email + different `content_name` or different signal type = 2 touchpoints). That matches the Team Outreach scoring exactly.
+**Not qualifying** (explicitly excluded): `webflow_newsletter`, `webflow_popup`, `webflow_contact`, `webflow_form`. These are list-builders / low-intent signals.
 
-**Action item:** Replace `isPreMql()` / `isMql()` in `Gated Content Analytics/src/app/page.tsx` with calls to the same weighted-scoring model used in Team Outreach (`inbound-scoring.ts`), so that the app's badges and the Team Outreach inbound-leads page agree. Tracked as a follow-up item under MKT-253 (or new issue).
+**Dedup rule**: same signal type + same content + same day = 1 touchpoint.
+
+**The CSV export** already includes per-lead `Pre-MQL` and `MQL` columns (`Yes` / `No`) computed from this logic. Bára can filter on `MQL = Yes` for campaign-success counts, and `Pre-MQL = Yes` for the "waiting for a second touchpoint" nurture queue. The Lead Detail Modal shows the three-criteria checklist (ICP / Finance Persona / Touchpoints) explicitly so anyone reviewing a lead can see why a given classification was assigned.
 
 ---
 
@@ -118,8 +123,9 @@ Until the app is updated, use the CSV export and compute MQL yourself by countin
 
 ## Sign-off
 
-- [ ] **Martin:** Confirm this weighted-touchpoint definition is the campaign success metric.
-- [ ] **Martin:** Confirm the **2.0 weighted-points** threshold (same as Team Outreach) is correct for paid social too, or whether paid social should have a different threshold.
-- [ ] **Martin:** Decide whether the Gated Content Analytics app should be updated to use the weighted-scoring model (replacing the current `isPreMql()` / `isMql()` logic) so that the UI badges match this definition.
+- [x] Confirm weighted-touchpoint definition is the campaign success metric. *(Confirmed by Martin, 2026-04-17.)*
+- [x] Update the Gated Content Analytics app to use this model. *(Shipped 2026-04-17 — see `src/lib/mql-classification.ts`.)*
+- [ ] **Martin:** Confirm the touchpoint threshold for paid social — currently **2+ Tier-1 touchpoints** (same as Team Outreach). Raise or lower if paid social needs a different bar.
+- [ ] **Martin:** Optionally extend the qualifying-touchpoint set. Currently only Webflow-surface Tier-1 signals are counted (content download, webinar reg, event reg, demo request). If RB2B visits or FI Assessment completions should also count toward MQL in this dashboard, we need to expose those signal types in the Gated Content Analytics data feed (today the app filters `trigger_signal_type LIKE 'webflow_%'`).
 
-Once signed off, this becomes the single source of truth for campaign-quality reporting.
+Once the remaining two items are confirmed, this is the single source of truth for campaign-quality reporting.

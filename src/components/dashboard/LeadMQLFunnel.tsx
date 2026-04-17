@@ -10,6 +10,7 @@
 
 import { useMemo, useState } from 'react'
 import { Lead } from '@/lib/supabase'
+import { buildTouchpointCounter, isPreMql, isMql } from '@/lib/mql-classification'
 import { TrendingUp, X, ChevronRight, User, Building2, Zap, ExternalLink } from 'lucide-react'
 
 interface LeadMQLFunnelProps {
@@ -34,101 +35,17 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
     const working = filteredLeads.filter(l => l.action_status === 'working' || l.action_status === 'researching')
     const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
 
-    // ============================================================
-    // PRE-MQL DEFINITION (Updated Feb 2026)
-    // ============================================================
-    // Pre-MQL = Quality lead ready for sales review
-    //
-    // MUST MEET ALL CONDITIONS:
-    // 1. Known company (has company_name, not personal email)
-    // 2. Finance persona (persona_score >= 18) OR P0/P1 tier
-    // 3. ICP fit (icp_fit_score >= 30)
-    // 4. Signal diversity (2+ signal CATEGORIES):
-    //    - Cat 1: 1st party form (webflow_* form submit)
-    //    - Cat 2: 1st party visit (RB2B website identification)
-    //    - Cat 3: 3rd party intent (G2, Lusha, Apollo)
-    //    - Cat 4: Company signals (transformation, why_now from AI research)
-    //
-    // EXCLUDES: rejected, done without auto_link
-    // MQL = Pre-MQL + accepted to Discovery/TAL
-    // ============================================================
-    const preMqls = filteredLeads.filter(l => {
-      // EXCLUDE rejected leads
-      if (l.action_status === 'rejected') {
-        return false
-      }
+    // Weighted touchpoint model (see lib/mql-classification.ts) — counts across
+    // the FULL unfiltered lead set so an email with a download and a webinar
+    // reg on different days is counted correctly even when contentFilter is on.
+    const touchpointCount = buildTouchpointCounter(leads)
 
-      // EXCLUDE done leads that are NOT MQL
-      if (l.action_status === 'done' && !l.rejection_reason?.includes('auto_linked')) {
-        return false
-      }
+    const preMqls = filteredLeads.filter(l => isPreMql(l, touchpointCount(l.email)))
+    const mqls = filteredLeads.filter(l => isMql(l, touchpointCount(l.email)))
 
-      // CONDITION 1: Must have known company
-      if (!l.company_name || l.company_name.trim() === '') {
-        return false
-      }
-
-      // CONDITION 2: Must be finance persona OR high tier
-      const isFinancePersona = (l.persona_score || 0) >= 18
-      const isHighTier = l.signal_tier === 'P0' || l.signal_tier === 'P1'
-      if (!isFinancePersona && !isHighTier) {
-        return false
-      }
-
-      // CONDITION 3: Must have ICP fit
-      if ((l.icp_fit_score || 0) < 30) {
-        return false
-      }
-
-      // CONDITION 4: Must have signal diversity (2+ signal CATEGORIES)
-      const signalHistory = l.context_for_outreach?.signal_history || []
-      const signalTypes = Array.isArray(signalHistory)
-        ? signalHistory.map(s => (s.type || '').toLowerCase())
-        : []
-
-      // Count signal categories (need 2+)
-      let signalCategories = 0
-
-      // Category 1: 1st party form (Webflow form submit)
-      const hasWebflowForm = l.trigger_signal_type?.startsWith('webflow_') ||
-                            signalTypes.some(t => t.startsWith('webflow'))
-      if (hasWebflowForm) signalCategories++
-
-      // Category 2: 1st party visit (RB2B website identification)
-      const hasRb2bVisit = signalTypes.some(t =>
-        t.startsWith('rb2b') || t.includes('website_visit') || t.includes('page_view')
-      )
-      if (hasRb2bVisit) signalCategories++
-
-      // Category 3: 3rd party intent (G2, Lusha, Apollo buying intent)
-      // NOTE: Only count explicit 3rd party signals in signal_history
-      // DO NOT use intent_score - it can be high from Webflow forms alone
-      const hasThirdPartyIntent = signalTypes.some(t =>
-        t.startsWith('g2') || t.includes('lusha') || t.includes('apollo') ||
-        t.includes('intent') || t.includes('buyer') || t.includes('bombora')
-      )
-      if (hasThirdPartyIntent) signalCategories++
-
-      // Category 4: Company-level signals from AI research
-      const transformationSignals = l.ai_research?.company?.transformation_signals || {}
-      const whyNowSignals = l.ai_research?.company?.why_now_signals || {}
-      const hasTransformationSignal = Object.values(transformationSignals).some(v => v === true)
-      const hasWhyNowSignal = Object.values(whyNowSignals).some(v => v === true)
-      if (hasTransformationSignal || hasWhyNowSignal) signalCategories++
-
-      // Need 2+ signal categories for diversity
-      if (signalCategories < 2) {
-        return false
-      }
-
-      return true
-    })
-
-    // MQL = Pre-MQL that has been accepted to Discovery/TAL
-    const mqls = preMqls.filter(l =>
-      l.action_status === 'done' &&
-      l.rejection_reason?.includes('auto_linked')
-    )
+    // Pre-MQL → MQL conversion: of the leads that reached Pre-MQL state,
+    // how many came back for a second touchpoint (= became MQL).
+    const preMqlOrMqlCount = preMqls.length + mqls.length
 
     // Quality breakdown
     const p0 = filteredLeads.filter(l => l.signal_tier === 'P0')
@@ -143,8 +60,8 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
       mqls,
       p0,
       p1,
-      preMqlRate: total > 0 ? ((preMqls.length / total) * 100).toFixed(1) : '0',
-      mqlRate: preMqls.length > 0 ? ((mqls.length / preMqls.length) * 100).toFixed(0) : '0',
+      preMqlRate: total > 0 ? ((preMqlOrMqlCount / total) * 100).toFixed(1) : '0',
+      mqlRate: preMqlOrMqlCount > 0 ? ((mqls.length / preMqlOrMqlCount) * 100).toFixed(0) : '0',
       qualityRate: total > 0 ? (((p0.length + p1.length) / total) * 100).toFixed(0) : '0',
     }
   }, [leads, contentFilter])
@@ -193,23 +110,23 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
           </span>
         </div>
 
-        {/* Mini Progress Bar */}
+        {/* Mini Progress Bar — Pre-MQL and MQL are disjoint in the new model */}
         <div className="h-2 rounded-full overflow-hidden bg-gray-100 mb-2">
           <div className="h-full flex">
             <div
-              style={{ width: `${((stats.total - stats.preMqls.length) / Math.max(stats.total, 1)) * 100}%` }}
+              style={{ width: `${((stats.total - stats.preMqls.length - stats.mqls.length) / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-gray-300"
-              title="Leads (not Pre-MQL)"
+              title="Lead (ICP/persona missing or no touchpoints)"
             />
             <div
-              style={{ width: `${((stats.preMqls.length - stats.mqls.length) / Math.max(stats.total, 1)) * 100}%` }}
+              style={{ width: `${(stats.preMqls.length / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-amber-400"
-              title="Pre-MQL (not yet MQL)"
+              title="Pre-MQL (ICP + persona fit, 1 touchpoint)"
             />
             <div
               style={{ width: `${(stats.mqls.length / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-emerald-500"
-              title="MQL"
+              title="MQL (ICP + persona fit, 2+ touchpoints)"
             />
           </div>
         </div>
@@ -218,11 +135,11 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
         <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-[9px]">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-gray-300" />
-            <span className="text-gray-500">Lead {stats.total - stats.preMqls.length}</span>
+            <span className="text-gray-500">Lead {stats.total - stats.preMqls.length - stats.mqls.length}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-amber-400" />
-            <span className="text-gray-500">Pre-MQL {stats.preMqls.length - stats.mqls.length}</span>
+            <span className="text-gray-500">Pre-MQL {stats.preMqls.length}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-emerald-500" />
@@ -283,9 +200,9 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                       : 'bg-gray-50 hover:bg-gray-100'
                   }`}
                 >
-                  <div className="text-2xl font-bold text-gray-600">{stats.preMqls.length - stats.mqls.length}</div>
+                  <div className="text-2xl font-bold text-gray-600">{stats.preMqls.length}</div>
                   <div className="text-xs text-gray-600">Pending</div>
-                  <div className="text-[10px] text-gray-500">in GTM Inbox</div>
+                  <div className="text-[10px] text-gray-500">need 2nd touchpoint</div>
                 </button>
               </div>
 
@@ -321,7 +238,7 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    Pending Review ({stats.preMqls.length - stats.mqls.length})
+                    Pre-MQL Needing 2nd Touch ({stats.preMqls.length})
                   </button>
                 </div>
 
@@ -330,7 +247,7 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                   {activeTab === 'preMql' && (
                     <LeadList
                       leads={stats.preMqls}
-                      emptyMessage="No Pre-MQLs yet (2+ signals required)"
+                      emptyMessage="No Pre-MQLs yet (needs ICP + finance persona + 1 touchpoint)"
                       onLeadClick={onLeadClick}
                       showSignals
                     />
@@ -338,15 +255,15 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                   {activeTab === 'mql' && (
                     <LeadList
                       leads={stats.mqls}
-                      emptyMessage="No MQLs yet (Pre-MQL + accepted to Discovery)"
+                      emptyMessage="No MQLs yet (needs ICP + finance persona + 2 or more touchpoints)"
                       onLeadClick={onLeadClick}
                       showSignals
                     />
                   )}
                   {activeTab === 'pending' && (
                     <LeadList
-                      leads={stats.preMqls.filter(l => !stats.mqls.includes(l))}
-                      emptyMessage="No pending Pre-MQLs"
+                      leads={stats.preMqls}
+                      emptyMessage="No Pre-MQLs waiting for a second touchpoint"
                       onLeadClick={onLeadClick}
                       showSignals
                     />
@@ -362,10 +279,13 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                 </summary>
                 <div className="mt-2 p-3 bg-blue-50 rounded-lg text-xs text-blue-800 space-y-2">
                   <div>
-                    <strong className="text-amber-700">Pre-MQL</strong> = 2+ combined signals (person downloads + company transformation signals)
+                    <strong className="text-gray-700">Lead</strong> — ICP fit (company size + industry) or finance persona missing (or rejected).
                   </div>
                   <div>
-                    <strong className="text-emerald-700">MQL</strong> = Pre-MQL + accepted to Discovery/TAL in GTM app
+                    <strong className="text-amber-700">Pre-MQL</strong> — company fits ICP firmographics AND person is a finance leader, but only 1 qualifying touchpoint so far (ebook download, webinar reg, event reg, or demo request).
+                  </div>
+                  <div>
+                    <strong className="text-emerald-700">MQL</strong> — ICP + finance persona + 2 or more qualifying touchpoints. Same model as Team Outreach inbound scoring. Newsletter / popup / contact-form signups don&apos;t count as touchpoints.
                   </div>
                 </div>
               </details>
