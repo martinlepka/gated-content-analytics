@@ -312,7 +312,9 @@ export default function DashboardPage() {
     }
 
     const headers = [
+      'Lead ID',
       'Date',
+      'Download Date',
       'Signal Type',
       'First Name',
       'Last Name',
@@ -331,6 +333,7 @@ export default function DashboardPage() {
       'Pre-MQL',
       'MQL',
       'Status',
+      'Last Status Change Date',
       'Rejection Reason',
       'Content Downloaded',
       'UTM Source',
@@ -372,8 +375,13 @@ export default function DashboardPage() {
         }
       }
 
+      const lastStatusChangeAt = lead.last_action_at || lead.rejected_at || lead.inbox_entered_at
+      const isGatedContent = lead.trigger_signal_type === 'webflow_content_download'
+
       return [
+        esc(lead.id),
         esc(format(parseISO(lead.inbox_entered_at), 'yyyy-MM-dd HH:mm')),
+        esc(isGatedContent ? format(parseISO(lead.inbox_entered_at), 'yyyy-MM-dd HH:mm') : ''),
         esc(lead.signal_type_label || SIGNAL_TYPE_LABELS[lead.trigger_signal_type || ''] || lead.trigger_signal_type || ''),
         esc(lead.first_name),
         esc(lead.last_name),
@@ -392,6 +400,7 @@ export default function DashboardPage() {
         esc(isPreMql(lead) ? 'Yes' : 'No'),
         esc(isMql(lead) ? 'Yes' : 'No'),
         esc(displayStatus),
+        esc(format(parseISO(lastStatusChangeAt), 'yyyy-MM-dd HH:mm')),
         esc(lead.rejection_reason),
         esc(lead.content_name),
         esc(lead.utm_source || context?.utm_source),
@@ -711,29 +720,38 @@ export default function DashboardPage() {
 
           {/* Pre-MQL Filter */}
           <div className="flex items-center gap-1 ml-2">
-            <span className="text-[9px] text-gray-500 mr-1">Funnel:</span>
+            <span
+              className="text-[9px] text-gray-500 mr-1"
+              title="Funnel stage filter. Lead = raw download. Pre-MQL = passes 4 algorithmic criteria (known company + finance persona + ICP fit>=30 + 2+ signal categories). MQL = Pre-MQL AND accepted by sales (campaign success metric)."
+            >
+              Funnel:
+            </span>
             <div className="flex">
               <button
                 onClick={() => setPreMqlFilter('all')}
                 className={`cyber-toggle ${preMqlFilter === 'all' ? 'active' : ''}`}
+                title="Show every lead regardless of funnel stage."
               >
                 All
               </button>
               <button
                 onClick={() => setPreMqlFilter('preMql')}
                 className={`cyber-toggle ${preMqlFilter === 'preMql' ? 'active bg-amber-100' : ''}`}
+                title="Show only leads that meet all 4 Pre-MQL criteria (includes both Pre-MQL and MQL leads)."
               >
                 Pre-MQL
               </button>
               <button
                 onClick={() => setPreMqlFilter('mql')}
                 className={`cyber-toggle ${preMqlFilter === 'mql' ? 'active bg-emerald-100' : ''}`}
+                title="Show only MQLs — leads accepted by sales into Discovery/TAL. Paid-campaign success metric."
               >
                 MQL
               </button>
               <button
                 onClick={() => setPreMqlFilter('lead')}
                 className={`cyber-toggle ${preMqlFilter === 'lead' ? 'active' : ''}`}
+                title="Show only raw leads that do NOT yet meet Pre-MQL criteria."
               >
                 Lead
               </button>
@@ -763,7 +781,12 @@ export default function DashboardPage() {
                   <th className="text-left w-[75px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('date')}>
                     <span className="flex items-center gap-1">DATE <SortIcon column="date" /></span>
                   </th>
-                  <th className="text-left w-[80px]">TYPE</th>
+                  <th
+                    className="text-left w-[80px]"
+                    title="Form type that created this lead (Gated Content, Demo Request, Newsletter, Webinar, Event, Contact, Popup). Assigned by the backend from Webflow form metadata. NOT the same as SOURCE — this is the pipeline label, SOURCE is the UTM from the URL."
+                  >
+                    TYPE
+                  </th>
                   <th className="text-left cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('contact')}>
                     <span className="flex items-center gap-1">CONTACT <SortIcon column="contact" /></span>
                   </th>
@@ -771,10 +794,17 @@ export default function DashboardPage() {
                     <span className="flex items-center gap-1">COMPANY <SortIcon column="company" /></span>
                   </th>
                   <th className="text-left w-[200px] max-w-[200px]">CONTENT</th>
-                  <th className="text-left w-[70px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('source')}>
+                  <th
+                    className="text-left w-[70px] cursor-pointer hover:text-neon-cyan"
+                    onClick={() => handleSort('source')}
+                    title="UTM source from the landing-page URL (?utm_source=...). Shows which paid channel or campaign drove the click (e.g. 'facebook' = Facebook ad, 'customer.io' = email nurture, 'linkedin' = LinkedIn). NOT the form type — that is TYPE. Blank = direct/organic or UTM stripped."
+                  >
                     <span className="flex items-center gap-1">SOURCE <SortIcon column="source" /></span>
                   </th>
-                  <th className="text-center w-[70px]">
+                  <th
+                    className="text-center w-[70px]"
+                    title="Algorithmic score: ICP Fit (0-100) + Persona/Why-Now (0-80) + Intent (0-40). Theoretical max 220, real-world max ~140. Higher = stronger fit with our Ideal Customer Profile + buying signals. Use TIER for prioritization, not raw score. Click the info icon for the full formula."
+                  >
                     <span className="flex items-center justify-center gap-1">
                       <span className="cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('score')}>SCORE</span>
                       <SortIcon column="score" />
@@ -787,10 +817,18 @@ export default function DashboardPage() {
                       </button>
                     </span>
                   </th>
-                  <th className="text-center w-[45px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('tier')}>
+                  <th
+                    className="text-center w-[45px] cursor-pointer hover:text-neon-cyan"
+                    onClick={() => handleSort('tier')}
+                    title="Priority bucket: P0 = immediate action (rare, top ~1%). P1 = 24h response, high priority. P2 = standard follow-up within a week. P3 = nurture only (~70% of leads). Tier combines score + signal quality, so a low-score lead can be P1 if ICP + Why-Now are excellent."
+                  >
                     <span className="flex items-center justify-center gap-1">TIER <SortIcon column="tier" /></span>
                   </th>
-                  <th className="text-center w-[65px] cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('status')}>
+                  <th
+                    className="text-center w-[65px] cursor-pointer hover:text-neon-cyan"
+                    onClick={() => handleSort('status')}
+                    title="Workflow state. NEW = fresh, unreviewed. RESEARCH = AI enrichment running. WORKING = sales reviewing. ACCEPTED = moved to Discovery/TAL (success!). MERGED = linked to existing account. REJECTED = disqualified (reason shown below). DONE = manually processed."
+                  >
                     <span className="flex items-center justify-center gap-1">STATUS <SortIcon column="status" /></span>
                   </th>
                 </tr>
@@ -939,10 +977,20 @@ export default function DashboardPage() {
                               {lead.signal_tier}
                             </span>
                             {isPreMql(lead) && !isMql(lead) && (
-                              <span className="text-[7px] text-amber-600 font-semibold">PRE-MQL</span>
+                              <span
+                                className="text-[7px] text-amber-600 font-semibold"
+                                title="Pre-MQL: algorithm thinks this lead is worth sales review. Requires ALL 4 criteria: known company + finance persona (score>=18 or P0/P1) + ICP fit>=30 + 2+ signal categories. Not yet confirmed by a human — not the campaign success metric."
+                              >
+                                PRE-MQL
+                              </span>
                             )}
                             {isMql(lead) && (
-                              <span className="text-[7px] text-emerald-600 font-semibold">MQL</span>
+                              <span
+                                className="text-[7px] text-emerald-600 font-semibold"
+                                title="MQL: meets Pre-MQL criteria AND sales accepted into Discovery/TAL. THIS is the paid-campaign success metric — the only label that confirms both algorithmic fit and human approval."
+                              >
+                                MQL
+                              </span>
                             )}
                           </div>
                         </td>

@@ -109,6 +109,8 @@ export interface Lead {
   action_status: string
   rejection_reason: string | null
   inbox_entered_at: string
+  last_action_at: string | null
+  rejected_at: string | null
   detected_persona: string
   content_name: string
   trigger_signal_type?: string
