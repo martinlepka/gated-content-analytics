@@ -1,7 +1,7 @@
 'use client'
 
 import { Lead, SIGNAL_TYPE_LABELS } from '@/lib/supabase'
-import { buildTouchpointCounter, hasIcpFit, hasFinancePersona, classifyLead, TIER_1_WEBFLOW_TYPES } from '@/lib/mql-classification'
+import { buildTouchpointCounter, hasIcpFit, hasFinancePersona, classifyLead, isQualifyingTouchpoint } from '@/lib/mql-classification'
 import { X, Building2, User, Mail, Briefcase, ExternalLink, Brain, Globe, Sparkles, Target, AlertTriangle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { useMemo } from 'react'
@@ -199,7 +199,7 @@ export function LeadDetailModal({ lead, allLeads, onClose }: LeadDetailModalProp
                   borderClass = 'border-gray-200 bg-gray-50'
               }
 
-              const thisRowCountsAsTouchpoint = TIER_1_WEBFLOW_TYPES.has(lead.trigger_signal_type || '')
+              const thisRowCountsAsTouchpoint = isQualifyingTouchpoint(lead)
 
               return (
                 <div className={`border rounded-lg p-3 ${borderClass}`}>
@@ -234,10 +234,11 @@ export function LeadDetailModal({ lead, allLeads, onClose }: LeadDetailModalProp
                       </span>
                     </div>
                     <div className="pl-4 text-[9px] text-gray-500">
-                      Qualifying types: content download, webinar reg, event reg, demo request. Newsletter / popup / contact form don&apos;t count. Dedup: same content + same day = 1 touchpoint.
+                      Qualifying types: content download, webinar reg, event reg, demo request, FI Assessment completion / shared report, RB2B visit (direct person only). Newsletter / popup / contact form / account-level RB2B don&apos;t count. Dedup: same content + same day = 1 touchpoint.
                       {!thisRowCountsAsTouchpoint && (
                         <div className="text-gray-400 italic mt-0.5">
-                          Note: this particular row ({SIGNAL_TYPE_LABELS[lead.trigger_signal_type || ''] || lead.trigger_signal_type}) is not a qualifying touchpoint type.
+                          Note: this particular row ({SIGNAL_TYPE_LABELS[lead.trigger_signal_type || ''] || lead.trigger_signal_type}) is not a qualifying touchpoint
+                          {(lead.trigger_signal_type || '').startsWith('rb2b_') ? ' (account-level RB2B — no identified person).' : '.'}
                         </div>
                       )}
                     </div>

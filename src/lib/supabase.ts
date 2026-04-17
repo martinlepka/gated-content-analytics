@@ -33,6 +33,13 @@ export const SIGNAL_TYPE_LABELS: Record<string, string> = {
   'webflow_webinar_reg': 'Webinar',
   'webflow_event_reg': 'Event',
   'webflow_form': 'Other Form',
+  'fi_assessment_completed': 'FI Assessment',
+  'fi_assessment_shared_report': 'FI Report Shared',
+  'rb2b_page_visit': 'RB2B Visit',
+  'rb2b_pricing_page': 'RB2B Pricing',
+  'rb2b_assessment_page': 'RB2B Assessment',
+  'rb2b_case_study': 'RB2B Case Study',
+  'rb2b_integration_page': 'RB2B Integration',
 }
 
 // All available signal types
@@ -45,6 +52,13 @@ export const ALL_SIGNAL_TYPES = [
   'webflow_webinar_reg',
   'webflow_event_reg',
   'webflow_form',
+  'fi_assessment_completed',
+  'fi_assessment_shared_report',
+  'rb2b_page_visit',
+  'rb2b_pricing_page',
+  'rb2b_assessment_page',
+  'rb2b_case_study',
+  'rb2b_integration_page',
 ]
 
 // Types for API responses

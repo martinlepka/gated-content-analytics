@@ -4,7 +4,7 @@
 **Status:** Draft — requires Martin's sign-off before being used as the campaign success metric.
 **Source of truth:** `GTM/team-outreach/src/lib/inbound-scoring.ts` (weighted touchpoint scoring, shared helper). This document describes the same model applied to paid social leads.
 **App implementation:** `GTM/Gated Content Analytics/src/lib/mql-classification.ts` (derived from the same spec, same excluded-types list, same dedup rule).
-**Last updated:** 2026-04-17 (v3 — Gated Content Analytics app now implements this definition directly; the "known gap" from v2 is closed).
+**Last updated:** 2026-04-17 (v4 — qualifying-touchpoint set extended to include FI Assessment completions and RB2B direct-person visits per Martin's confirmation).
 
 ---
 
@@ -102,8 +102,11 @@ As of **2026-04-17**, the Gated Content Analytics app implements this definition
 - `webflow_webinar_reg` (webinar registration)
 - `webflow_event_reg` (in-person event registration)
 - `webflow_demo_request` (demo request)
+- `fi_assessment_completed` (completed the FI Assessment quiz — gated content)
+- `fi_assessment_shared_report` (shared their FI Assessment report — high intent)
+- `rb2b_page_visit` / `rb2b_pricing_page` / `rb2b_assessment_page` / `rb2b_case_study` / `rb2b_integration_page` — **ONLY when the visitor was identified as a specific person** (email not `unknown@...`). Account-level RB2B rows do not count (they mark a company visit, not a person).
 
-**Not qualifying** (explicitly excluded): `webflow_newsletter`, `webflow_popup`, `webflow_contact`, `webflow_form`. These are list-builders / low-intent signals.
+**Not qualifying** (explicitly excluded): `webflow_newsletter`, `webflow_popup`, `webflow_contact`, `webflow_form`, and any RB2B row with `email = 'unknown@*'`. These are list-builders, low-intent, or company-only signals.
 
 **Dedup rule**: same signal type + same content + same day = 1 touchpoint.
 
@@ -125,7 +128,7 @@ As of **2026-04-17**, the Gated Content Analytics app implements this definition
 
 - [x] Confirm weighted-touchpoint definition is the campaign success metric. *(Confirmed by Martin, 2026-04-17.)*
 - [x] Update the Gated Content Analytics app to use this model. *(Shipped 2026-04-17 — see `src/lib/mql-classification.ts`.)*
+- [x] Extend the qualifying-touchpoint set beyond Webflow forms. *(Confirmed by Martin, 2026-04-17 — FI Assessment completions and RB2B direct-person visits are now Tier-1 touchpoints. Account-level RB2B excluded.)*
 - [ ] **Martin:** Confirm the touchpoint threshold for paid social — currently **2+ Tier-1 touchpoints** (same as Team Outreach). Raise or lower if paid social needs a different bar.
-- [ ] **Martin:** Optionally extend the qualifying-touchpoint set. Currently only Webflow-surface Tier-1 signals are counted (content download, webinar reg, event reg, demo request). If RB2B visits or FI Assessment completions should also count toward MQL in this dashboard, we need to expose those signal types in the Gated Content Analytics data feed (today the app filters `trigger_signal_type LIKE 'webflow_%'`).
 
-Once the remaining two items are confirmed, this is the single source of truth for campaign-quality reporting.
+Once the remaining threshold item is confirmed, this is the single source of truth for campaign-quality reporting.

@@ -45,9 +45,13 @@ Pre-MQL and MQL are **derived flags** computed in the frontend (see `src/lib/mql
 - `webflow_webinar_reg` — webinar registration
 - `webflow_event_reg` — in-person event registration
 - `webflow_demo_request` — demo request
+- `fi_assessment_completed` — finished the FI Assessment quiz (gated content)
+- `fi_assessment_shared_report` — shared their FI Assessment report (high intent)
+- `rb2b_*` — website visit by an **identified person** (email not `unknown@...`). Account-level RB2B rows (email = `unknown@...`) are kept in the data for transparency but **do NOT count as a touchpoint**.
 
-**Not qualifying touchpoints** (list-builders / low-intent):
-- `webflow_newsletter`, `webflow_popup`, `webflow_contact`, `webflow_form` — these mark someone as "on the list," not as a buyer.
+**Not qualifying touchpoints** (list-builders / low-intent / company-only):
+- `webflow_newsletter`, `webflow_popup`, `webflow_contact`, `webflow_form` — list-builders, not buying intent.
+- Any `rb2b_*` row with `email = 'unknown@...'` — company visit, no identified person.
 
 **Dedup rule:** same signal type + same content + same day = 1 touchpoint (downloading the same ebook twice in a day counts once).
 

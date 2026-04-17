@@ -21,17 +21,37 @@ import type { Lead } from './supabase'
 
 /**
  * Qualifying Tier-1 Webflow signal types (1 touchpoint each).
- * Mirrors inbound-scoring.ts SIGNAL_WEIGHTS Tier-1 group, filtered to what
- * Gated Content Analytics actually sees (trigger_signal_type LIKE 'webflow_%').
- *
- * demo_request is included as Tier-1: a finance leader requesting a demo is
- * high-intent engagement, not a list-build.
+ * demo_request is Tier-1: a finance leader requesting a demo is high-intent.
  */
 export const TIER_1_WEBFLOW_TYPES = new Set<string>([
   'webflow_content_download',
   'webflow_webinar_reg',
   'webflow_event_reg',
   'webflow_demo_request',
+])
+
+/**
+ * Qualifying Tier-1 FI Assessment signal types (1 touchpoint each).
+ * The FI Assessment quiz is gated content — completing it is a real
+ * touchpoint, same weight as an ebook download.
+ */
+export const TIER_1_FI_ASSESSMENT_TYPES = new Set<string>([
+  'fi_assessment_completed',
+  'fi_assessment_shared_report',
+])
+
+/**
+ * RB2B signal types — qualify as Tier-1 ONLY when the visitor was
+ * identified as a specific person (direct_person). Account-level rows
+ * (email starts with 'unknown@') do NOT count as a touchpoint.
+ * Checked via isRb2bDirectPerson() below.
+ */
+export const TIER_1_RB2B_TYPES = new Set<string>([
+  'rb2b_page_visit',
+  'rb2b_pricing_page',
+  'rb2b_assessment_page',
+  'rb2b_case_study',
+  'rb2b_integration_page',
 ])
 
 /**
@@ -45,6 +65,19 @@ export const EXCLUDED_WEBFLOW_TYPES = new Set<string>([
   'webflow_contact',
   'webflow_form',
 ])
+
+/**
+ * True if this RB2B row represents a real identified person, not just the
+ * company. Mirrors the classifyRB2BSignal() logic in team-outreach/src/lib/
+ * inbound-scoring.ts — an email of `unknown@<domain>` is RB2B's sentinel for
+ * "we saw someone from this company but couldn't identify who".
+ */
+export function isRb2bDirectPerson(lead: Lead): boolean {
+  const email = (lead.email || '').toLowerCase().trim()
+  if (!email) return false
+  if (email.startsWith('unknown@')) return false
+  return true
+}
 
 /**
  * Firmographic ICP fit check.
@@ -71,9 +104,14 @@ export function hasFinancePersona(lead: Lead): boolean {
 
 /**
  * Is this row a qualifying Tier-1 touchpoint on its own?
+ * Covers Webflow Tier-1 types, FI Assessment completions, and RB2B direct-person visits.
  */
 export function isQualifyingTouchpoint(lead: Lead): boolean {
-  return TIER_1_WEBFLOW_TYPES.has(lead.trigger_signal_type || '')
+  const sigType = lead.trigger_signal_type || ''
+  if (TIER_1_WEBFLOW_TYPES.has(sigType)) return true
+  if (TIER_1_FI_ASSESSMENT_TYPES.has(sigType)) return true
+  if (TIER_1_RB2B_TYPES.has(sigType)) return isRb2bDirectPerson(lead)
+  return false
 }
 
 /**
