@@ -1,10 +1,10 @@
 # MQL Success Definition — Paid Social Campaigns
 
 **For:** Paid social manager optimizing campaign spend.
-**Status:** Draft — requires Martin's sign-off before being used as the campaign success metric.
+**Status:** Final — signed off by Martin on 2026-04-17. Source of truth for campaign-quality reporting.
 **Source of truth:** `GTM/team-outreach/src/lib/inbound-scoring.ts` (weighted touchpoint scoring, shared helper). This document describes the same model applied to paid social leads.
 **App implementation:** `GTM/Gated Content Analytics/src/lib/mql-classification.ts` (derived from the same spec, same excluded-types list, same dedup rule).
-**Last updated:** 2026-04-17 (v4 — qualifying-touchpoint set extended to include FI Assessment completions and RB2B direct-person visits per Martin's confirmation).
+**Last updated:** 2026-04-17 (v5 — final. All sign-off checkboxes closed. Paid-social threshold confirmed at 2+ Tier-1 touchpoints, same as Team Outreach).
 
 ---
 
@@ -129,6 +129,6 @@ As of **2026-04-17**, the Gated Content Analytics app implements this definition
 - [x] Confirm weighted-touchpoint definition is the campaign success metric. *(Confirmed by Martin, 2026-04-17.)*
 - [x] Update the Gated Content Analytics app to use this model. *(Shipped 2026-04-17 — see `src/lib/mql-classification.ts`.)*
 - [x] Extend the qualifying-touchpoint set beyond Webflow forms. *(Confirmed by Martin, 2026-04-17 — FI Assessment completions and RB2B direct-person visits are now Tier-1 touchpoints. Account-level RB2B excluded.)*
-- [ ] **Martin:** Confirm the touchpoint threshold for paid social — currently **2+ Tier-1 touchpoints** (same as Team Outreach). Raise or lower if paid social needs a different bar.
+- [x] Confirm the touchpoint threshold for paid social. *(Confirmed by Martin, 2026-04-17 — 2+ Tier-1 touchpoints, same bar as Team Outreach inbound scoring. No paid-specific threshold.)*
 
-Once the remaining threshold item is confirmed, this is the single source of truth for campaign-quality reporting.
+**This document is now final and the single source of truth for campaign-quality reporting.** Share with Bára and use for all campaign performance reviews.
