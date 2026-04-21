@@ -739,8 +739,8 @@ export default function DashboardPage() {
                     <span className="flex items-center gap-1">SOURCE <SortIcon column="source" /></span>
                   </th>
                   <th
-                    className="text-center w-[70px]"
-                    title="Algorithmic score: ICP Fit (0-100) + Persona/Why-Now (0-80) + Intent (0-40). Theoretical max 220, real-world max ~140. Higher = stronger fit with our Ideal Customer Profile + buying signals. Use TIER for prioritization, not raw score. Click the info icon for the full formula."
+                    className="text-center w-[95px]"
+                    title="Unified combined_score (0-320) from discovery_contacts — the single number used across GTM Inbox, Team Outreach, and this dashboard. Account total (ICP+WhyNow+Intent, 0-220) + contact_score (Persona+Engagement+FI, 0-100). Number is coloured by priority tier (P0>=220, P1>=140, P2>=80, P3<80). Legacy-fallback rows show a tiny ~ prefix. Click info for the full formula."
                   >
                     <span className="flex items-center justify-center gap-1">
                       <span className="cursor-pointer hover:text-neon-cyan" onClick={() => handleSort('score')}>SCORE</span>
@@ -755,13 +755,6 @@ export default function DashboardPage() {
                     </span>
                   </th>
                   <th
-                    className="text-center w-[45px] cursor-pointer hover:text-neon-cyan"
-                    onClick={() => handleSort('tier')}
-                    title="Priority bucket: P0 = immediate action (rare, top ~1%). P1 = 24h response, high priority. P2 = standard follow-up within a week. P3 = nurture only (~70% of leads). Tier combines score + signal quality, so a low-score lead can be P1 if ICP + Why-Now are excellent."
-                  >
-                    <span className="flex items-center justify-center gap-1">TIER <SortIcon column="tier" /></span>
-                  </th>
-                  <th
                     className="text-center w-[65px] cursor-pointer hover:text-neon-cyan"
                     onClick={() => handleSort('status')}
                     title="Workflow state. NEW = fresh, unreviewed. RESEARCH = AI enrichment running. WORKING = sales reviewing. ACCEPTED = moved to Discovery/TAL (success!). MERGED = linked to existing account. REJECTED = disqualified (reason shown below). DONE = manually processed."
@@ -773,7 +766,7 @@ export default function DashboardPage() {
               <tbody>
                 {filteredLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-8 text-gray-400 font-cyber text-xs">
+                    <td colSpan={8} className="text-center py-8 text-gray-400 font-cyber text-xs">
                       No data found
                     </td>
                   </tr>
@@ -906,12 +899,16 @@ export default function DashboardPage() {
                           </div>
                         </td>
                         <td className="text-center">
-                          <span className="font-cyber text-[12px] text-gray-800">{lead.total_score}</span>
-                        </td>
-                        <td className="text-center">
                           <div className="flex flex-col items-center gap-0.5">
-                            <span className={`inline-block px-1.5 py-0.5 text-[9px] font-cyber font-bold rounded ${tierClass}`}>
-                              {lead.signal_tier}
+                            <span
+                              className={`inline-flex items-baseline px-1.5 py-0.5 rounded font-cyber font-bold ${tierClass}`}
+                              title={`${lead.signal_tier} · combined_score ${lead.total_score}${lead.score_source === 'legacy' ? ' (legacy fallback — not yet linked to universe)' : ''}`}
+                            >
+                              {lead.score_source === 'legacy' && (
+                                <span className="text-[8px] opacity-70 mr-0.5">~</span>
+                              )}
+                              <span className="text-[12px] tabular-nums">{lead.total_score}</span>
+                              <span className="text-[8px] opacity-60 ml-1">{lead.signal_tier}</span>
                             </span>
                             {isPreMql(lead) && (
                               <span
