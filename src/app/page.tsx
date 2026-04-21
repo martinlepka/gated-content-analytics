@@ -302,13 +302,12 @@ export default function DashboardPage() {
         ? Object.values(company.tech_stack_categorized).flat().join('; ')
         : ''
 
-      // Display status
+      // Display status — CSV export matches UI terminology: all auto_linked
+      // variants map to "accepted" (dedup-into-existing is still an acceptance).
       let displayStatus = lead.action_status
       if (lead.action_status === 'done') {
-        if (lead.rejection_reason?.includes('auto_linked_to_discovery') || lead.rejection_reason?.includes('auto_linked_to_tal')) {
+        if (lead.rejection_reason?.includes('auto_linked')) {
           displayStatus = 'accepted'
-        } else if (lead.rejection_reason?.includes('auto_linked_existing')) {
-          displayStatus = 'merged'
         }
       }
 
@@ -757,7 +756,7 @@ export default function DashboardPage() {
                   <th
                     className="text-center w-[65px] cursor-pointer hover:text-neon-cyan"
                     onClick={() => handleSort('status')}
-                    title="Workflow state. NEW = fresh, unreviewed. RESEARCH = AI enrichment running. WORKING = sales reviewing. ACCEPTED = moved to Discovery/TAL (success!). MERGED = linked to existing account. REJECTED = disqualified (reason shown below). DONE = manually processed."
+                    title="Workflow state. NEW = fresh, unreviewed. RESEARCH = AI enrichment running. WORKING = sales reviewing. ACCEPTED = moved to Discovery/TAL (covers both new records and dedup-merge into existing accounts). REJECTED = disqualified (reason shown below). DONE = manually processed."
                   >
                     <span className="flex items-center justify-center gap-1">STATUS <SortIcon column="status" /></span>
                   </th>
@@ -790,16 +789,16 @@ export default function DashboardPage() {
                       signalType === 'webflow_event_reg' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                       'bg-gray-100 text-gray-600 border-gray-200'
 
-                    // Determine display status based on action_status + rejection_reason
+                    // Determine display status based on action_status + rejection_reason.
+                    // Note: auto_linked_existing (dedup) used to render as MERGED but is
+                    // semantically an acceptance — the lead was processed, just linked
+                    // to a pre-existing discovery account instead of creating a new one.
+                    // Collapsing to ACCEPTED removes a confusing label from the UI while
+                    // the underlying rejection_reason is preserved for analytics.
                     const getDisplayStatus = () => {
                       if (lead.action_status === 'done') {
-                        // Check rejection_reason for accepted leads
-                        if (lead.rejection_reason?.includes('auto_linked_to_discovery') ||
-                            lead.rejection_reason?.includes('auto_linked_to_tal')) {
+                        if (lead.rejection_reason?.includes('auto_linked')) {
                           return { label: 'ACCEPTED', class: 'text-neon-green', bgClass: 'bg-green-100' }
-                        }
-                        if (lead.rejection_reason?.includes('auto_linked_existing')) {
-                          return { label: 'MERGED', class: 'text-neon-green', bgClass: 'bg-green-100' }
                         }
                         return { label: 'DONE', class: 'text-neon-green', bgClass: 'bg-green-100' }
                       }
@@ -901,14 +900,13 @@ export default function DashboardPage() {
                         <td className="text-center">
                           <div className="flex flex-col items-center gap-0.5">
                             <span
-                              className={`inline-flex items-baseline px-1.5 py-0.5 rounded font-cyber font-bold ${tierClass}`}
-                              title={`${lead.signal_tier} · combined_score ${lead.total_score}${lead.score_source === 'legacy' ? ' (legacy fallback — not yet linked to universe)' : ''}`}
+                              className={`inline-flex items-baseline px-2 py-0.5 rounded font-cyber font-bold ${tierClass}`}
+                              title={`combined_score ${lead.total_score} (priority ${lead.signal_tier})${lead.score_source === 'legacy' ? ' — legacy fallback, not yet linked to universe' : ''}`}
                             >
                               {lead.score_source === 'legacy' && (
                                 <span className="text-[8px] opacity-70 mr-0.5">~</span>
                               )}
                               <span className="text-[12px] tabular-nums">{lead.total_score}</span>
-                              <span className="text-[8px] opacity-60 ml-1">{lead.signal_tier}</span>
                             </span>
                             {isPreMql(lead) && (
                               <span
@@ -1030,11 +1028,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-neon-green font-semibold text-xs w-20">ACCEPTED</span>
-                    <span className="text-gray-600">Moved to Discovery account or TAL in GTM app. This is a <strong>qualified lead</strong>!</span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-neon-green font-semibold text-xs w-20">MERGED</span>
-                    <span className="text-gray-600">Auto-linked to existing account (same company already in pipeline).</span>
+                    <span className="text-gray-600">Moved to Discovery account or TAL in GTM app. This is a <strong>qualified lead</strong> — covers both brand-new records and dedup-merges into an existing account.</span>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="text-red-500 font-semibold text-xs w-20">REJECTED</span>

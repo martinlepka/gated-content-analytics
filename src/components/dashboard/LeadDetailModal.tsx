@@ -45,13 +45,11 @@ export function LeadDetailModal({ lead, allLeads, onClose }: LeadDetailModalProp
 
   const getStatusDisplay = () => {
     if (lead.action_status === 'done') {
-      // Check rejection_reason for accepted leads
-      if (lead.rejection_reason?.includes('auto_linked_to_discovery') ||
-          lead.rejection_reason?.includes('auto_linked_to_tal')) {
+      // All auto_linked variants (to_discovery / to_tal / existing) are
+      // acceptance outcomes. Collapse into ACCEPTED — the old MERGED label
+      // was confusing without adding information visible here.
+      if (lead.rejection_reason?.includes('auto_linked')) {
         return { label: 'ACCEPTED', color: 'text-neon-green' }
-      }
-      if (lead.rejection_reason?.includes('auto_linked_existing')) {
-        return { label: 'MERGED', color: 'text-neon-green' }
       }
       return { label: 'DONE', color: 'text-neon-green' }
     }
