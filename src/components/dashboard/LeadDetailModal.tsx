@@ -109,50 +109,136 @@ export function LeadDetailModal({ lead, allLeads, onClose }: LeadDetailModalProp
 
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-5 space-y-4">
-            {/* Score Bar - synced with GTM Inbox via Unified Scoring (MKT-256) */}
-            <div className="grid grid-cols-6 gap-2">
-              <div className="cyber-stat p-3 text-center">
-                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.total_score, lead.score_max ?? 320)}`}>
-                  {lead.total_score}
+            {/* Score Bar — Unified Scoring breakdown (MKT-256)
+                 account_total (ICP+WhyNow+Intent, 0-220) + contact_score
+                 (Persona+Engagement+FI, 0-100) = combined_score (0-320).
+                 Components sourced from discovery_accounts + discovery_contacts
+                 so they actually sum to TOTAL. Legacy-fallback rows (no FK to
+                 universe) fall through to inbox_leads values and are flagged. */}
+            {lead.unified ? (
+              <div className="space-y-3">
+                {/* Top row: TOTAL + GRADE + STATUS */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-2xl font-bold ${getScoreColor(lead.unified.combined_score ?? 0, 320)}`}>
+                      {lead.unified.combined_score ?? 0}
+                      <span className="text-[10px] text-gray-400 ml-1">/ 320</span>
+                    </div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">TOTAL · {lead.unified.priority_tier ?? 'P3'}</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-2xl font-bold ${status.color}`}>
+                      {lead.unified.lead_grade ?? lead.lead_grade ?? 'D'}
+                    </div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">ICP GRADE</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`text-sm font-bold ${status.color} leading-tight pt-1`}>
+                      {status.label}
+                    </div>
+                    <div className="text-[9px] text-gray-500 tracking-wider mt-1">STATUS</div>
+                  </div>
                 </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">
-                  TOTAL
-                  {lead.score_source === 'legacy' && (
-                    <span className="ml-1 text-[8px] text-amber-600 font-semibold">(legacy)</span>
-                  )}
+
+                {/* Account breakdown: ICP + Why Now + Intent = 0-220 */}
+                <div>
+                  <div className="text-[9px] text-gray-500 tracking-wider mb-1 flex items-center justify-between">
+                    <span>ACCOUNT TOTAL</span>
+                    <span className="text-gray-400">{lead.unified.account_total ?? 0} / 220</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="cyber-stat p-2 text-center">
+                      <div className={`font-cyber text-base font-bold ${getScoreColor(lead.unified.icp_fit_score ?? 0, 100)}`}>
+                        {lead.unified.icp_fit_score ?? 0}
+                        <span className="text-[9px] text-gray-400 ml-0.5">/100</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 tracking-wider">ICP FIT</div>
+                    </div>
+                    <div className="cyber-stat p-2 text-center">
+                      <div className={`font-cyber text-base font-bold ${getScoreColor(lead.unified.why_now_score ?? 0, 80)}`}>
+                        {lead.unified.why_now_score ?? 0}
+                        <span className="text-[9px] text-gray-400 ml-0.5">/80</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 tracking-wider">WHY NOW</div>
+                    </div>
+                    <div className="cyber-stat p-2 text-center">
+                      <div className={`font-cyber text-base font-bold ${getScoreColor(lead.unified.intent_score ?? 0, 40)}`}>
+                        {lead.unified.intent_score ?? 0}
+                        <span className="text-[9px] text-gray-400 ml-0.5">/40</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 tracking-wider">INTENT</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact breakdown: Persona + Engagement + FI = 0-100 */}
+                <div>
+                  <div className="text-[9px] text-gray-500 tracking-wider mb-1 flex items-center justify-between">
+                    <span>CONTACT SCORE</span>
+                    <span className="text-gray-400">{lead.unified.contact_score ?? 0} / 100</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="cyber-stat p-2 text-center">
+                      <div className={`font-cyber text-base font-bold ${getScoreColor(lead.unified.persona_score ?? 0, 40)}`}>
+                        {lead.unified.persona_score ?? 0}
+                        <span className="text-[9px] text-gray-400 ml-0.5">/40</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 tracking-wider">PERSONA</div>
+                    </div>
+                    <div className="cyber-stat p-2 text-center">
+                      <div className={`font-cyber text-base font-bold ${getScoreColor(lead.unified.engagement_score ?? 0, 40)}`}>
+                        {lead.unified.engagement_score ?? 0}
+                        <span className="text-[9px] text-gray-400 ml-0.5">/40</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 tracking-wider">ENGAGEMENT</div>
+                    </div>
+                    <div className="cyber-stat p-2 text-center">
+                      <div className={`font-cyber text-base font-bold ${getScoreColor(lead.unified.fi_score ?? 0, 20)}`}>
+                        {lead.unified.fi_score ?? 0}
+                        <span className="text-[9px] text-gray-400 ml-0.5">/20</span>
+                      </div>
+                      <div className="text-[9px] text-gray-500 tracking-wider">FI ASSESSMENT</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="cyber-stat p-3 text-center">
-                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.icp_fit_score, 100)}`}>
-                  {lead.icp_fit_score}
+            ) : (
+              /* Legacy fallback — row not yet linked to universe. Shows the old
+                 0-220 columns so the user still sees something useful. */
+              <div>
+                <div className="text-[9px] text-amber-600 tracking-wider mb-1 font-semibold">
+                  LEGACY SCORES · not yet linked to the universe · max 220
                 </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">ICP FIT</div>
-              </div>
-              <div className="cyber-stat p-3 text-center">
-                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.persona_score || 0, 50)}`}>
-                  {lead.persona_score || 0}
+                <div className="grid grid-cols-6 gap-2">
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.total_score, 220)}`}>
+                      {lead.total_score}
+                    </div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">TOTAL</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.icp_fit_score, 100)}`}>{lead.icp_fit_score}</div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">ICP FIT</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.persona_score || 0, 50)}`}>{lead.persona_score || 0}</div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">PERSONA</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.intent_score, 40)}`}>{lead.intent_score}</div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">INTENT</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`font-cyber text-xl font-bold ${status.color}`}>{lead.lead_grade ?? 'D'}</div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">GRADE</div>
+                  </div>
+                  <div className="cyber-stat p-3 text-center">
+                    <div className={`text-[11px] font-bold ${status.color}`}>{status.label}</div>
+                    <div className="text-[9px] text-gray-500 tracking-wider">STATUS</div>
+                  </div>
                 </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">PERSONA</div>
               </div>
-              <div className="cyber-stat p-3 text-center">
-                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.intent_score, 40)}`}>
-                  {lead.intent_score}
-                </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">INTENT</div>
-              </div>
-              <div className="cyber-stat p-3 text-center">
-                <div className={`font-cyber text-xl font-bold ${status.color}`}>
-                  {lead.lead_grade}
-                </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">GRADE</div>
-              </div>
-              <div className="cyber-stat p-3 text-center">
-                <div className={`text-[11px] font-bold ${status.color}`}>
-                  {status.label}
-                </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">STATUS</div>
-              </div>
-            </div>
+            )}
 
             {/* Rejection Reason */}
             {lead.action_status === 'rejected' && lead.rejection_reason && (

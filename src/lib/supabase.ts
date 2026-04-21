@@ -124,6 +124,25 @@ export interface Lead {
   score_max?: number            // 320 for unified, 220 for legacy
   legacy_signal_tier?: string | null   // raw inbox_leads.signal_tier
   legacy_total_score?: number | null   // raw inbox_leads.total_score
+  legacy_icp_fit_score?: number | null
+  legacy_persona_score?: number | null
+  legacy_intent_score?: number | null
+  /** Full unified breakdown from discovery_accounts + discovery_contacts.
+   *  account_total (0-220) + contact_score (0-100) = combined_score (0-320).
+   *  Null when row isn't linked to the universe yet. */
+  unified?: {
+    combined_score: number | null
+    priority_tier: string | null
+    lead_grade: string | null
+    account_total: number | null      // 0-220
+    icp_fit_score: number | null      // 0-100
+    why_now_score: number | null      // 0-80
+    intent_score: number | null       // 0-40 (account-level)
+    contact_score: number | null      // 0-100
+    persona_score: number | null      // 0-40
+    engagement_score: number | null   // 0-40
+    fi_score: number | null           // 0-20
+  } | null
   icp_fit_score: number
   persona_score: number  // "Why Now" score (0-80) - synced with GTM Inbox
   intent_score: number
