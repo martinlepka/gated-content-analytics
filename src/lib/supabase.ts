@@ -159,6 +159,10 @@ export interface Lead {
   utm_campaign: string | null
   has_research: boolean
   in_salesforce: boolean
+  /** Number of distinct days this contact clicked a link in an outreach email.
+   *  Pulled from outreach_queue so the MQL classifier matches Team Outreach's
+   *  2.0-weighted inbound threshold (email_link_click is Tier-1 there). */
+  email_click_touchpoints?: number
   // AI Research data
   ai_research?: {
     company?: {

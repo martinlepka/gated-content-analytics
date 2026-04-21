@@ -173,10 +173,13 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                   <strong className="text-gray-500">Unqualified</strong> — doesn&apos;t fit ICP (company size + industry) OR isn&apos;t a finance leader. Most gated-content traffic lands here and that&apos;s fine — nurture.
                 </div>
                 <div>
-                  <strong className="text-amber-700">Pre-MQL</strong> — ICP ✓ + finance persona ✓ + exactly <strong>1</strong> qualifying touchpoint (ebook, webinar, event reg, demo request, FI Assessment, or RB2B direct-person visit). Warm but not yet a campaign win.
+                  <strong className="text-amber-700">Pre-MQL</strong> — ICP ✓ + finance persona ✓ + exactly <strong>1</strong> qualifying touchpoint. Warm but not yet a campaign win.
                 </div>
                 <div>
-                  <strong className="text-emerald-700">MQL</strong> — ICP ✓ + finance persona ✓ + <strong>2 or more</strong> qualifying touchpoints. This is the paid-campaign success metric. Newsletter / popup / contact-form don&apos;t count.
+                  <strong className="text-emerald-700">MQL</strong> — ICP ✓ + finance persona ✓ + <strong>2 or more</strong> qualifying touchpoints. Matches Team Outreach&apos;s 2.0-weighted inbound threshold so the two apps agree.
+                </div>
+                <div className="text-[10px] text-blue-700 pl-1">
+                  <strong>Qualifying touchpoints:</strong> ebook / webinar / event reg / demo request, FI Assessment completion or shared report, RB2B direct-person visit, <strong>or a click on a link in any outreach email from us</strong>. Dedup: same signal + same day = 1 touchpoint. Newsletter / popup / contact form / account-level RB2B don&apos;t count.
                 </div>
                 <div>
                   <strong className="text-red-600">Rejected</strong> — disqualified (not ICP, existing customer, competitor, personal email, partner).

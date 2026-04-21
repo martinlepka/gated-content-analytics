@@ -117,30 +117,44 @@ export function isQualifyingTouchpoint(lead: Lead): boolean {
 /**
  * Build a per-email touchpoint counter from the full lead list.
  * Dedupes by (signal_type, content, day) so two downloads of the same ebook
- * on the same day count once.
+ * on the same day count once. ALSO adds email-link-click touchpoints pulled
+ * from outreach_queue by the edge function (lead.email_click_touchpoints) —
+ * each distinct click-day counts as 1, matching Team Outreach's 2.0-weighted
+ * inbound-lead threshold so the two apps agree on who's an MQL.
  *
  * Returns a function `(email) => count` so callers can look up each row.
  */
 export function buildTouchpointCounter(allLeads: Lead[]): (email: string | null | undefined) => number {
-  const byEmail = new Map<string, Set<string>>()
+  const inboxByEmail = new Map<string, Set<string>>()
+  const emailClicksByEmail = new Map<string, number>()
+
   for (const lead of allLeads) {
-    if (!isQualifyingTouchpoint(lead)) continue
     const email = (lead.email || '').toLowerCase().trim()
     if (!email) continue
+
+    // Record email-click touchpoints (same number repeated on every row for
+    // this email — take the max to avoid overwriting a higher value).
+    const clicks = lead.email_click_touchpoints ?? 0
+    if (clicks > (emailClicksByEmail.get(email) ?? 0)) {
+      emailClicksByEmail.set(email, clicks)
+    }
+
+    // Record inbox_leads qualifying touchpoints.
+    if (!isQualifyingTouchpoint(lead)) continue
     const day = (lead.inbox_entered_at || '').slice(0, 10)
     const content = lead.content_name || lead.trigger_signal_type || ''
     const key = `${lead.trigger_signal_type}:${content}:${day}`
-    const existing = byEmail.get(email)
-    if (existing) {
-      existing.add(key)
-    } else {
-      byEmail.set(email, new Set([key]))
-    }
+    const existing = inboxByEmail.get(email)
+    if (existing) existing.add(key)
+    else inboxByEmail.set(email, new Set([key]))
   }
+
   return (email: string | null | undefined) => {
     if (!email) return 0
-    const set = byEmail.get(email.toLowerCase().trim())
-    return set ? set.size : 0
+    const e = email.toLowerCase().trim()
+    const inboxCount = inboxByEmail.get(e)?.size ?? 0
+    const clickCount = emailClicksByEmail.get(e) ?? 0
+    return inboxCount + clickCount
   }
 }
 
