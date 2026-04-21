@@ -21,7 +21,7 @@ interface LeadMQLFunnelProps {
 
 export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunnelProps) {
   const [showModal, setShowModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'preMql' | 'mql' | 'pending'>('preMql')
+  const [activeTab, setActiveTab] = useState<'preMql' | 'mql'>('preMql')
 
   const stats = useMemo(() => {
     const filteredLeads = contentFilter
@@ -30,39 +30,34 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
 
     const total = filteredLeads.length
 
-    // Status breakdown
-    const newLeads = filteredLeads.filter(l => l.action_status === 'new')
-    const working = filteredLeads.filter(l => l.action_status === 'working' || l.action_status === 'researching')
-    const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
-
     // Weighted touchpoint model (see lib/mql-classification.ts) — counts across
     // the FULL unfiltered lead set so an email with a download and a webinar
     // reg on different days is counted correctly even when contentFilter is on.
     const touchpointCount = buildTouchpointCounter(leads)
 
+    // Pre-MQL and MQL are DISJOINT classes (classifyLead returns one of
+    // lead/pre_mql/mql/rejected). A lead can't be both Pre-MQL and MQL.
     const preMqls = filteredLeads.filter(l => isPreMql(l, touchpointCount(l.email)))
     const mqls = filteredLeads.filter(l => isMql(l, touchpointCount(l.email)))
-
-    // Pre-MQL → MQL conversion: of the leads that reached Pre-MQL state,
-    // how many came back for a second touchpoint (= became MQL).
-    const preMqlOrMqlCount = preMqls.length + mqls.length
-
-    // Quality breakdown
-    const p0 = filteredLeads.filter(l => l.signal_tier === 'P0')
-    const p1 = filteredLeads.filter(l => l.signal_tier === 'P1')
+    const rejected = filteredLeads.filter(l => l.action_status === 'rejected')
+    const qualified = preMqls.length + mqls.length
+    // Remaining "Lead" bucket: total - qualified - rejected (ICP or persona miss)
+    const leadsBucket = Math.max(0, total - qualified - rejected.length)
 
     return {
       total,
-      newLeads,
-      working,
-      rejected,
       preMqls,
       mqls,
-      p0,
-      p1,
-      preMqlRate: total > 0 ? ((preMqlOrMqlCount / total) * 100).toFixed(1) : '0',
-      mqlRate: preMqlOrMqlCount > 0 ? ((mqls.length / preMqlOrMqlCount) * 100).toFixed(0) : '0',
-      qualityRate: total > 0 ? (((p0.length + p1.length) / total) * 100).toFixed(0) : '0',
+      rejected,
+      qualified,
+      leadsBucket,
+      // Conversion rates — all relative to TOTAL so the %s compose cleanly:
+      //   qualifiedRate = (Pre-MQL + MQL) / Total     "% that fit ICP+persona with ≥1 touchpoint"
+      //   mqlRate       = MQL / Total                 "paid-campaign success metric"
+      //   preMqlToMqlRate = MQL / (Pre-MQL + MQL)     "of qualified, how many came back"
+      qualifiedRate: total > 0 ? ((qualified / total) * 100).toFixed(1) : '0',
+      mqlRate: total > 0 ? ((mqls.length / total) * 100).toFixed(1) : '0',
+      preMqlToMqlRate: qualified > 0 ? ((mqls.length / qualified) * 100).toFixed(0) : '0',
     }
   }, [leads, contentFilter])
 
@@ -72,19 +67,17 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
         className="cyber-card p-4 cursor-pointer hover:border-neon-cyan/50 transition-colors h-full"
         onClick={() => setShowModal(true)}
       >
-        <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">LEAD → PRE-MQL → MQL</div>
+        <div className="font-cyber text-[10px] text-gray-500 tracking-wider mb-3">FUNNEL · TOTAL → QUALIFIED → MQL</div>
 
-        {/* Compact Funnel */}
+        {/* Compact Funnel — each count is DISJOINT (lead can't be both Pre-MQL and MQL) */}
         <div className="flex items-center justify-center gap-1 mb-3">
-          {/* Leads */}
           <div className="text-center">
             <div className="text-xl font-bold text-indigo-600">{stats.total}</div>
-            <div className="text-[8px] text-gray-500 uppercase">Leads</div>
+            <div className="text-[8px] text-gray-500 uppercase">Total</div>
           </div>
 
           <ChevronRight className="w-3 h-3 text-gray-300" />
 
-          {/* Pre-MQLs */}
           <div className="text-center">
             <div className="text-xl font-bold text-amber-600">{stats.preMqls.length}</div>
             <div className="text-[8px] text-gray-500 uppercase">Pre-MQL</div>
@@ -92,17 +85,16 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
 
           <ChevronRight className="w-3 h-3 text-gray-300" />
 
-          {/* MQLs */}
           <div className="text-center">
             <div className="text-xl font-bold text-emerald-600">{stats.mqls.length}</div>
             <div className="text-[8px] text-gray-500 uppercase">MQL</div>
           </div>
         </div>
 
-        {/* Conversion Rates */}
+        {/* Conversion Rates — both relative to TOTAL for clean composition */}
         <div className="flex justify-center gap-2 mb-3">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 rounded-full">
-            <span className="text-[9px] text-amber-700">{stats.preMqlRate}% Pre-MQL</span>
+            <span className="text-[9px] text-amber-700">{stats.qualifiedRate}% qualified</span>
           </span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 rounded-full">
             <TrendingUp className="w-2.5 h-2.5 text-emerald-600" />
@@ -110,32 +102,37 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
           </span>
         </div>
 
-        {/* Mini Progress Bar — Pre-MQL and MQL are disjoint in the new model */}
+        {/* Progress Bar — disjoint buckets */}
         <div className="h-2 rounded-full overflow-hidden bg-gray-100 mb-2">
           <div className="h-full flex">
             <div
-              style={{ width: `${((stats.total - stats.preMqls.length - stats.mqls.length) / Math.max(stats.total, 1)) * 100}%` }}
+              style={{ width: `${(stats.leadsBucket / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-gray-300"
-              title="Lead (ICP/persona missing or no touchpoints)"
+              title="Unqualified — ICP fit or finance persona missing"
             />
             <div
               style={{ width: `${(stats.preMqls.length / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-amber-400"
-              title="Pre-MQL (ICP + persona fit, 1 touchpoint)"
+              title="Pre-MQL — ICP + finance persona + 1 touchpoint"
             />
             <div
               style={{ width: `${(stats.mqls.length / Math.max(stats.total, 1)) * 100}%` }}
               className="bg-emerald-500"
-              title="MQL (ICP + persona fit, 2+ touchpoints)"
+              title="MQL — ICP + finance persona + 2 or more touchpoints"
+            />
+            <div
+              style={{ width: `${(stats.rejected.length / Math.max(stats.total, 1)) * 100}%` }}
+              className="bg-red-300"
+              title="Rejected — disqualified (not ICP, customer, competitor, etc.)"
             />
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-[9px]">
+        {/* Legend — all 4 disjoint buckets sum to Total */}
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9px]">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-gray-300" />
-            <span className="text-gray-500">Lead {stats.total - stats.preMqls.length - stats.mqls.length}</span>
+            <span className="text-gray-500">Unqualified {stats.leadsBucket}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-amber-400" />
@@ -144,6 +141,10 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-sm bg-emerald-500" />
             <span className="text-gray-500">MQL {stats.mqls.length}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-sm bg-red-300" />
+            <span className="text-gray-500">Rejected {stats.rejected.length}</span>
           </div>
         </div>
 
@@ -162,11 +163,32 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Summary - Funnel (clickable tabs) */}
+              {/* Definitions — visible by default so users understand numbers they're about to see */}
+              <div className="p-3 bg-blue-50 rounded-lg text-xs text-blue-900 space-y-1.5">
+                <div className="font-semibold text-blue-800 mb-1.5">How the funnel works</div>
+                <div>
+                  <strong className="text-gray-700">Total</strong> — every Webflow / FI Assessment / RB2B download or submission recorded.
+                </div>
+                <div>
+                  <strong className="text-gray-500">Unqualified</strong> — doesn&apos;t fit ICP (company size + industry) OR isn&apos;t a finance leader. Most gated-content traffic lands here and that&apos;s fine — nurture.
+                </div>
+                <div>
+                  <strong className="text-amber-700">Pre-MQL</strong> — ICP ✓ + finance persona ✓ + exactly <strong>1</strong> qualifying touchpoint (ebook, webinar, event reg, demo request, FI Assessment, or RB2B direct-person visit). Warm but not yet a campaign win.
+                </div>
+                <div>
+                  <strong className="text-emerald-700">MQL</strong> — ICP ✓ + finance persona ✓ + <strong>2 or more</strong> qualifying touchpoints. This is the paid-campaign success metric. Newsletter / popup / contact-form don&apos;t count.
+                </div>
+                <div>
+                  <strong className="text-red-600">Rejected</strong> — disqualified (not ICP, existing customer, competitor, personal email, partner).
+                </div>
+              </div>
+
+              {/* Summary — 4 disjoint buckets that sum to Total */}
               <div className="grid grid-cols-4 gap-3">
                 <div className="p-3 bg-indigo-50 rounded-lg text-center">
                   <div className="text-2xl font-bold text-indigo-600">{stats.total}</div>
-                  <div className="text-xs text-indigo-700">Leads</div>
+                  <div className="text-xs text-indigo-700">Total</div>
+                  <div className="text-[10px] text-indigo-500">downloads</div>
                 </div>
                 <button
                   onClick={() => setActiveTab('preMql')}
@@ -178,7 +200,7 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                 >
                   <div className="text-2xl font-bold text-amber-600">{stats.preMqls.length}</div>
                   <div className="text-xs text-amber-700">Pre-MQL</div>
-                  <div className="text-[10px] text-amber-600">{stats.preMqlRate}%</div>
+                  <div className="text-[10px] text-amber-600">{stats.qualifiedRate}% qualified</div>
                 </button>
                 <button
                   onClick={() => setActiveTab('mql')}
@@ -190,25 +212,23 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                 >
                   <div className="text-2xl font-bold text-emerald-600">{stats.mqls.length}</div>
                   <div className="text-xs text-emerald-700">MQL</div>
-                  <div className="text-[10px] text-emerald-600">{stats.mqlRate}%</div>
+                  <div className="text-[10px] text-emerald-600">{stats.mqlRate}% of total</div>
                 </button>
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className={`p-3 rounded-lg text-center transition-all ${
-                    activeTab === 'pending'
-                      ? 'bg-gray-200 ring-2 ring-gray-400'
-                      : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="text-2xl font-bold text-gray-600">{stats.preMqls.length}</div>
-                  <div className="text-xs text-gray-600">Pending</div>
-                  <div className="text-[10px] text-gray-500">need 2nd touchpoint</div>
-                </button>
+                <div className="p-3 bg-gray-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-gray-500">{stats.leadsBucket + stats.rejected.length}</div>
+                  <div className="text-xs text-gray-600">Unqual. + Rej.</div>
+                  <div className="text-[10px] text-gray-500">not working on these</div>
+                </div>
+              </div>
+
+              {/* Secondary conversion stat */}
+              <div className="text-[11px] text-gray-500 text-center">
+                <strong>Pre-MQL → MQL conversion:</strong> {stats.preMqlToMqlRate}%
+                <span className="ml-1">(of the {stats.qualified} qualified leads, {stats.mqls.length} returned for a 2nd touchpoint)</span>
               </div>
 
               {/* Lead Lists */}
               <div className="border rounded-lg overflow-hidden">
-                {/* Tab Header */}
                 <div className="flex border-b bg-gray-50">
                   <button
                     onClick={() => setActiveTab('preMql')}
@@ -218,7 +238,7 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    All Pre-MQLs ({stats.preMqls.length})
+                    Pre-MQLs ({stats.preMqls.length})
                   </button>
                   <button
                     onClick={() => setActiveTab('mql')}
@@ -230,24 +250,13 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                   >
                     MQLs ({stats.mqls.length})
                   </button>
-                  <button
-                    onClick={() => setActiveTab('pending')}
-                    className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                      activeTab === 'pending'
-                        ? 'bg-gray-200 text-gray-800 border-b-2 border-gray-500'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    Pre-MQL Needing 2nd Touch ({stats.preMqls.length})
-                  </button>
                 </div>
 
-                {/* Lead List Content */}
                 <div className="max-h-[300px] overflow-y-auto">
                   {activeTab === 'preMql' && (
                     <LeadList
                       leads={stats.preMqls}
-                      emptyMessage="No Pre-MQLs yet (needs ICP + finance persona + 1 touchpoint)"
+                      emptyMessage="No Pre-MQLs yet — needs ICP fit + finance persona + 1 touchpoint."
                       onLeadClick={onLeadClick}
                       showSignals
                     />
@@ -255,40 +264,13 @@ export function LeadMQLFunnel({ leads, contentFilter, onLeadClick }: LeadMQLFunn
                   {activeTab === 'mql' && (
                     <LeadList
                       leads={stats.mqls}
-                      emptyMessage="No MQLs yet (needs ICP + finance persona + 2 or more touchpoints)"
-                      onLeadClick={onLeadClick}
-                      showSignals
-                    />
-                  )}
-                  {activeTab === 'pending' && (
-                    <LeadList
-                      leads={stats.preMqls}
-                      emptyMessage="No Pre-MQLs waiting for a second touchpoint"
+                      emptyMessage="No MQLs yet — Pre-MQLs need a second touchpoint (ebook, webinar, demo) to convert."
                       onLeadClick={onLeadClick}
                       showSignals
                     />
                   )}
                 </div>
               </div>
-
-              {/* Definition (collapsed) */}
-              <details className="group">
-                <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
-                  <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
-                  What is Pre-MQL / MQL?
-                </summary>
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg text-xs text-blue-800 space-y-2">
-                  <div>
-                    <strong className="text-gray-700">Lead</strong> — ICP fit (company size + industry) or finance persona missing (or rejected).
-                  </div>
-                  <div>
-                    <strong className="text-amber-700">Pre-MQL</strong> — company fits ICP firmographics AND person is a finance leader, but only 1 qualifying touchpoint so far (ebook download, webinar reg, event reg, or demo request).
-                  </div>
-                  <div>
-                    <strong className="text-emerald-700">MQL</strong> — ICP + finance persona + 2 or more qualifying touchpoints. Same model as Team Outreach inbound scoring. Newsletter / popup / contact-form signups don&apos;t count as touchpoints.
-                  </div>
-                </div>
-              </details>
             </div>
           </div>
         </div>
