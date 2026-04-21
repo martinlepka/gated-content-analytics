@@ -111,13 +111,18 @@ export function LeadDetailModal({ lead, allLeads, onClose }: LeadDetailModalProp
 
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-5 space-y-4">
-            {/* Score Bar - synced with GTM Inbox */}
+            {/* Score Bar - synced with GTM Inbox via Unified Scoring (MKT-256) */}
             <div className="grid grid-cols-6 gap-2">
               <div className="cyber-stat p-3 text-center">
-                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.total_score, 220)}`}>
+                <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.total_score, lead.score_max ?? 320)}`}>
                   {lead.total_score}
                 </div>
-                <div className="text-[9px] text-gray-500 tracking-wider">TOTAL</div>
+                <div className="text-[9px] text-gray-500 tracking-wider">
+                  TOTAL
+                  {lead.score_source === 'legacy' && (
+                    <span className="ml-1 text-[8px] text-amber-600 font-semibold">(legacy)</span>
+                  )}
+                </div>
               </div>
               <div className="cyber-stat p-3 text-center">
                 <div className={`font-cyber text-xl font-bold ${getScoreColor(lead.icp_fit_score, 100)}`}>

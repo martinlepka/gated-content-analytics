@@ -971,18 +971,20 @@ export default function DashboardPage() {
               {/* Scoring */}
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-neon-purple" /> Scoring (0-220)
+                  <Brain className="w-4 h-4 text-neon-purple" /> Unified Scoring (0-320)
                 </h3>
                 <p className="text-gray-600 mb-2">
-                  <strong>Not Salesforce scoring.</strong> This is ICP Fit scoring based on:
+                  <strong>Same score as GTM Inbox &amp; Team Outreach</strong> (MKT-256). Sourced from{' '}
+                  <code className="px-1 bg-gray-100 rounded text-[11px]">discovery_contacts.combined_score</code>{' '}
+                  — the single universe-wide number:
                 </p>
                 <ul className="list-disc list-inside text-gray-500 space-y-1 ml-2">
-                  <li><strong>ICP Fit (0-100):</strong> Company size, age, industry, tech stack, multi-entity structure</li>
-                  <li><strong>Persona (0-50):</strong> Job title fit (CFO=25, VP Finance=22, Controller=20, etc.) + tenure signals</li>
-                  <li><strong>Intent (0-50):</strong> Website engagement, signal type, 3rd party intent (G2, Lusha)</li>
+                  <li><strong>Account total (0-220):</strong> ICP Fit (0-100) + Why Now (0-80) + Intent (0-40)</li>
+                  <li><strong>Contact score (0-100):</strong> Persona (0-40) + Engagement (0-40, 90-day decay) + FI assessment (0-20)</li>
+                  <li><strong>Combined = account + contact</strong> — persists on every contact, recalculated by signal-ingest</li>
                 </ul>
                 <p className="text-gray-500 mt-2 text-xs">
-                  Higher score = better fit for Keboola Financial Intelligence. Gated content alone gives ~10-20 intent points.
+                  Older leads without a discovery link still show legacy 0-220 score with a <strong>legacy</strong> badge. Those get backfilled on their next signal.
                 </p>
               </div>
 
@@ -994,19 +996,19 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <div className="flex items-start gap-3">
                     <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p0">P0</span>
-                    <span className="text-gray-600">Immediate action - Total ≥150 AND ICP ≥60 AND WhyNow ≥30. Typically requires multiple strong signals.</span>
+                    <span className="text-gray-600">Call today. combined_score ≥ 220. Great ICP fit + clear &quot;why now&quot; + real engagement.</span>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p1">P1</span>
-                    <span className="text-gray-600">High priority - Total ≥100 OR (ICP ≥70 AND WhyNow ≥20). Good ICP fit with some buying signals.</span>
+                    <span className="text-gray-600">Contact this week. combined_score ≥ 140. Strong fit + signals.</span>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p2">P2</span>
-                    <span className="text-gray-600">Standard follow-up - Total ≥60. Moderate fit, worth nurturing.</span>
+                    <span className="text-gray-600">Nurture. combined_score ≥ 80. Good fit, needs more signals.</span>
                   </div>
                   <div className="flex items-start gap-3">
                     <span className="inline-block px-2 py-0.5 text-xs font-bold rounded tier-p3">P3</span>
-                    <span className="text-gray-600">Nurture only - Total &lt;60. Low fit or insufficient data. Most gated content downloads start here.</span>
+                    <span className="text-gray-600">Low priority. combined_score &lt; 80. Missing key criteria — most gated-content-only leads start here.</span>
                   </div>
                 </div>
               </div>
@@ -1090,7 +1092,7 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="font-cyber text-lg text-neon-cyan tracking-wider">ICP SCORING MODEL</h2>
+              <h2 className="font-cyber text-lg text-neon-cyan tracking-wider">UNIFIED SCORING MODEL</h2>
               <button onClick={() => setShowScoringInfo(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -1099,61 +1101,100 @@ export default function DashboardPage() {
             <div className="p-6 space-y-6 text-sm">
               {/* Total Score */}
               <div className="p-4 bg-gradient-to-r from-cyan-50 to-purple-50 rounded-lg">
-                <div className="text-lg font-bold text-gray-800 mb-2">Total Score: 0 - 220 points</div>
+                <div className="text-lg font-bold text-gray-800 mb-2">combined_score: 0 - 320 points</div>
                 <p className="text-gray-600">
-                  This is <strong>NOT Salesforce scoring</strong>. It's our ICP (Ideal Customer Profile) fit score
-                  that measures how well a lead matches our target customer profile.
+                  One canonical number per contact (MKT-256 Unified Scoring). Stored on{' '}
+                  <code className="px-1 bg-white/60 rounded text-[11px]">discovery_contacts</code> and read by{' '}
+                  <strong>every app</strong>: GTM Inbox, Team Outreach, Genesis, FI Analytics, and this dashboard. No more divergent numbers.
                 </p>
               </div>
 
-              {/* Score Components */}
+              {/* Formula */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs text-slate-700">
+                combined_score = account_total_score (0-220) + contact_score (0-100)
+              </div>
+
+              {/* Account Total */}
               <div>
-                <h3 className="font-semibold text-gray-800 mb-3">Score Components</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">Account Total (0-220)</h3>
                 <div className="space-y-3">
-                  {/* ICP Fit */}
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-blue-800">ICP Fit Score</span>
                       <span className="text-blue-600 font-mono">0 - 100 pts</span>
                     </div>
                     <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                      <li>• <strong>Multi-entity structure</strong> (+25) - 5+ business entities</li>
+                      <li>• <strong>Multi-entity structure</strong> (+25) - 5+ entities / portfolio companies</li>
                       <li>• <strong>Company age</strong> (+20) - 20+ years (legacy systems likely)</li>
-                      <li>• <strong>Target industry</strong> (+20) - Manufacturing, Logistics, Retail, Hospitality</li>
-                      <li>• <strong>Employee count</strong> (+15) - 200-5,000 employees (mid-market)</li>
-                      <li>• <strong>Legacy tech stack</strong> (+20) - Oracle, SAP, AS400, QuickBooks</li>
-                      <li>• <strong>High data maturity</strong> (-30) - Already has Snowflake, dbt (anti-ICP)</li>
+                      <li>• <strong>Target industry</strong> (+20) - Manufacturing, Logistics, Retail, Hospitality, Finance</li>
+                      <li>• <strong>Employee count</strong> (+15) - 500-3,000 sweet spot</li>
+                      <li>• <strong>Legacy tech stack</strong> (+20) - Multiple ERPs, Oracle/SAP/AS400</li>
+                      <li>• <strong>High data maturity</strong> (-30) - Already has Snowflake/dbt (anti-ICP)</li>
                     </ul>
                   </div>
 
-                  {/* Why Now */}
                   <div className="p-4 bg-amber-50 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-amber-800">Why Now Score</span>
                       <span className="text-amber-600 font-mono">0 - 80 pts</span>
                     </div>
                     <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                      <li>• <strong>New CFO/CIO hire</strong> (+25) - Executive change in last 90 days</li>
-                      <li>• <strong>Business pressure</strong> (+15) - Layoffs, cost-cutting announced</li>
-                      <li>• <strong>Growth signals</strong> (+10) - Expansion, new markets</li>
-                      <li>• <strong>Transformation</strong> (+15) - Digital/data transformation initiative</li>
-                      <li>• <strong>First data hire</strong> (+10) - Hiring data engineers for first time</li>
-                      <li>• <strong>M&A activity</strong> (+10) - Merger, acquisition announced</li>
+                      <li>• <strong>New CFO/CIO/CTO/CDO hire</strong> - Exec change in last 90 days</li>
+                      <li>• <strong>Business pressure</strong> - Layoffs, cost cutting announced</li>
+                      <li>• <strong>Growth signals</strong> - International expansion, new markets</li>
+                      <li>• <strong>Transformation</strong> - ERP modernization, AI/data initiative</li>
+                      <li>• <strong>First data hire</strong> - Hiring data engineers for first time</li>
+                      <li>• <strong>M&amp;A activity</strong> - Merger, acquisition announced</li>
                     </ul>
                   </div>
 
-                  {/* Intent */}
                   <div className="p-4 bg-green-50 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-green-800">Intent Score</span>
                       <span className="text-green-600 font-mono">0 - 40 pts</span>
                     </div>
                     <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                      <li>• <strong>Website engagement</strong> (+25) - Pricing page, multiple visits</li>
-                      <li>• <strong>3rd party intent</strong> (+15) - G2, Lusha intent signals</li>
-                      <li>• <strong>Email engagement</strong> (+5) - Opens, clicks on marketing emails</li>
-                      <li>• <strong>Gated content</strong> (+10-20) - Downloaded ebook, whitepaper</li>
+                      <li>• <strong>Demo request</strong> (+25), <strong>pricing page visit</strong> (+20)</li>
+                      <li>• <strong>Content download</strong> (+12), multiple page views (+8, +5 repeat)</li>
+                      <li>• <strong>3rd party intent</strong> (+4-15) - G2, Lusha, Apollo</li>
+                      <li>• <strong>Email click</strong> (+5)</li>
                     </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Score */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Contact Score (0-100)</h3>
+                <div className="space-y-3">
+                  <div className="p-4 bg-purple-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-purple-800">Persona</span>
+                      <span className="text-purple-600 font-mono">0 - 40 pts</span>
+                    </div>
+                    <div className="text-xs text-gray-600 ml-4">
+                      Title (0-25) + Seniority (0-10) + Department (0-5). CFO/Chief Financial = 25, VP/Head Finance = 22, Controller/FP&amp;A = 20, Finance Analyst = 18.
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-rose-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-rose-800">Engagement</span>
+                      <span className="text-rose-600 font-mono">0 - 40 pts</span>
+                    </div>
+                    <div className="text-xs text-gray-600 ml-4">
+                      Touchpoint weights with <strong>90-day linear decay</strong>. Tier 1 (direct): 8.0/signal. Tier 2 (3rd party): 2.0/signal. Events &gt; 90 days are dropped.
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-teal-50 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-teal-800">FI Assessment</span>
+                      <span className="text-teal-600 font-mono">0 - 20 pts</span>
+                    </div>
+                    <div className="text-xs text-gray-600 ml-4">
+                      leader=20 · established=16 · developing=12 · foundational=8 · starting=4. NULL if quiz not completed.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1165,39 +1206,42 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg">
                     <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p0">P0</span>
                     <div>
-                      <div className="font-medium text-gray-700">Immediate Action</div>
-                      <div className="text-xs text-gray-500">Total ≥150 AND ICP ≥60 AND WhyNow ≥30</div>
+                      <div className="font-medium text-gray-700">Call today</div>
+                      <div className="text-xs text-gray-500">combined_score ≥ 220</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
                     <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p1">P1</span>
                     <div>
-                      <div className="font-medium text-gray-700">High Priority</div>
-                      <div className="text-xs text-gray-500">Total ≥100 OR (ICP ≥70 AND WhyNow ≥20)</div>
+                      <div className="font-medium text-gray-700">Contact this week</div>
+                      <div className="text-xs text-gray-500">combined_score ≥ 140</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-cyan-50 rounded-lg">
                     <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p2">P2</span>
                     <div>
-                      <div className="font-medium text-gray-700">Standard Follow-up</div>
-                      <div className="text-xs text-gray-500">Total ≥60</div>
+                      <div className="font-medium text-gray-700">Nurture</div>
+                      <div className="text-xs text-gray-500">combined_score ≥ 80</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <span className="inline-block px-2 py-1 text-xs font-bold rounded tier-p3">P3</span>
                     <div>
-                      <div className="font-medium text-gray-700">Nurture Only</div>
-                      <div className="text-xs text-gray-500">Total &lt;60 - Low fit or insufficient data</div>
+                      <div className="font-medium text-gray-700">Low priority</div>
+                      <div className="text-xs text-gray-500">combined_score &lt; 80 — missing key criteria</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Note */}
+              {/* Legacy row note */}
               <div className="p-4 bg-yellow-50 rounded-lg text-yellow-800 text-xs">
-                <strong>Note:</strong> Most gated content downloads start as P3 because we only have intent signal
-                (they downloaded something) but limited ICP fit data until enrichment runs. Score improves after
-                AI research adds company firmographics and transformation signals.
+                <strong>Legacy rows:</strong> ~17% of historical leads haven&apos;t been linked to the discovery universe yet. Those show the old 0-220 score with a <strong>legacy</strong> badge. They&apos;ll backfill to unified automatically on their next signal (form submission, RB2B visit, email click) once webflow-webhook routes through <code className="px-1 bg-white/60 rounded text-[11px]">signal-ingest</code>.
+              </div>
+
+              {/* Note */}
+              <div className="p-4 bg-slate-50 rounded-lg text-slate-700 text-xs">
+                <strong>Why most gated-content leads are P3:</strong> a single download contributes only a few engagement points. Score rises with repeat visits, pricing page hits, demo requests, or once AI research fills ICP-fit signals (industry, tech stack, why-now).
               </div>
             </div>
           </div>

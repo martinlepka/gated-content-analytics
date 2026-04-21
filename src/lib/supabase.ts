@@ -114,9 +114,16 @@ export interface Lead {
   company_domain: string | null
   industry: string | null
   employee_count: string | null
-  signal_tier: string
-  lead_grade: string
-  total_score: number
+  // Unified Scoring (MKT-256) — API now returns canonical priority_tier +
+  // combined_score from discovery_contacts when the lead has been linked.
+  // legacy_* fields preserve the pre-unification values for transparency.
+  signal_tier: string           // effective tier (unified with legacy fallback)
+  lead_grade: string | null     // effective grade
+  total_score: number           // effective score, range depends on score_source
+  score_source?: 'unified' | 'legacy'  // where signal_tier/total_score came from
+  score_max?: number            // 320 for unified, 220 for legacy
+  legacy_signal_tier?: string | null   // raw inbox_leads.signal_tier
+  legacy_total_score?: number | null   // raw inbox_leads.total_score
   icp_fit_score: number
   persona_score: number  // "Why Now" score (0-80) - synced with GTM Inbox
   intent_score: number
