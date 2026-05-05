@@ -114,6 +114,9 @@ export interface Lead {
   company_domain: string | null
   industry: string | null
   employee_count: string | null
+  // Cold-calling fields (added for CSV export)
+  phone: string | null            // inbox_leads.phone_direct → discovery_contacts.phone fallback
+  hq_location: string | null      // discovery_accounts.hq_location (city/state for TZ)
   // Unified Scoring (MKT-256) — API now returns canonical priority_tier +
   // combined_score from discovery_contacts when the lead has been linked.
   // legacy_* fields preserve the pre-unification values for transparency.

@@ -11,6 +11,124 @@ import { Search, ChevronDown, ChevronUp, Zap, Activity, Target, Brain, Users, Tr
 import Link from 'next/link'
 import { format, parseISO, subDays, isAfter } from 'date-fns'
 
+// US state code → IANA timezone (best-effort for cold-calling).
+// Multi-zone states (TX, FL, KY, TN, etc.) map to their majority zone.
+const US_STATE_TZ: Record<string, string> = {
+  AL: 'America/Chicago', AK: 'America/Anchorage', AZ: 'America/Phoenix',
+  AR: 'America/Chicago', CA: 'America/Los_Angeles', CO: 'America/Denver',
+  CT: 'America/New_York', DE: 'America/New_York', DC: 'America/New_York',
+  FL: 'America/New_York', GA: 'America/New_York', HI: 'Pacific/Honolulu',
+  ID: 'America/Boise', IL: 'America/Chicago', IN: 'America/Indiana/Indianapolis',
+  IA: 'America/Chicago', KS: 'America/Chicago', KY: 'America/New_York',
+  LA: 'America/Chicago', ME: 'America/New_York', MD: 'America/New_York',
+  MA: 'America/New_York', MI: 'America/Detroit', MN: 'America/Chicago',
+  MS: 'America/Chicago', MO: 'America/Chicago', MT: 'America/Denver',
+  NE: 'America/Chicago', NV: 'America/Los_Angeles', NH: 'America/New_York',
+  NJ: 'America/New_York', NM: 'America/Denver', NY: 'America/New_York',
+  NC: 'America/New_York', ND: 'America/Chicago', OH: 'America/New_York',
+  OK: 'America/Chicago', OR: 'America/Los_Angeles', PA: 'America/New_York',
+  RI: 'America/New_York', SC: 'America/New_York', SD: 'America/Chicago',
+  TN: 'America/Chicago', TX: 'America/Chicago', UT: 'America/Denver',
+  VT: 'America/New_York', VA: 'America/New_York', WA: 'America/Los_Angeles',
+  WV: 'America/New_York', WI: 'America/Chicago', WY: 'America/Denver',
+  PR: 'America/Puerto_Rico',
+}
+
+// Country (name or ISO code) → primary IANA timezone.
+const COUNTRY_TZ: Record<string, string> = {
+  // North America
+  US: 'America/New_York', USA: 'America/New_York', 'UNITED STATES': 'America/New_York',
+  CA: 'America/Toronto', CAN: 'America/Toronto', CANADA: 'America/Toronto',
+  MX: 'America/Mexico_City', MEX: 'America/Mexico_City', MEXICO: 'America/Mexico_City',
+  // Europe
+  GB: 'Europe/London', UK: 'Europe/London', 'UNITED KINGDOM': 'Europe/London', ENGLAND: 'Europe/London',
+  IE: 'Europe/Dublin', IRELAND: 'Europe/Dublin',
+  DE: 'Europe/Berlin', GERMANY: 'Europe/Berlin',
+  FR: 'Europe/Paris', FRANCE: 'Europe/Paris',
+  ES: 'Europe/Madrid', SPAIN: 'Europe/Madrid',
+  IT: 'Europe/Rome', ITALY: 'Europe/Rome',
+  NL: 'Europe/Amsterdam', NETHERLANDS: 'Europe/Amsterdam',
+  BE: 'Europe/Brussels', BELGIUM: 'Europe/Brussels',
+  CH: 'Europe/Zurich', SWITZERLAND: 'Europe/Zurich',
+  AT: 'Europe/Vienna', AUSTRIA: 'Europe/Vienna',
+  PL: 'Europe/Warsaw', POLAND: 'Europe/Warsaw',
+  CZ: 'Europe/Prague', CZECHIA: 'Europe/Prague', 'CZECH REPUBLIC': 'Europe/Prague',
+  SK: 'Europe/Bratislava', SLOVAKIA: 'Europe/Bratislava',
+  HU: 'Europe/Budapest', HUNGARY: 'Europe/Budapest',
+  RO: 'Europe/Bucharest', ROMANIA: 'Europe/Bucharest',
+  BG: 'Europe/Sofia', BULGARIA: 'Europe/Sofia',
+  GR: 'Europe/Athens', GREECE: 'Europe/Athens',
+  PT: 'Europe/Lisbon', PORTUGAL: 'Europe/Lisbon',
+  SE: 'Europe/Stockholm', SWEDEN: 'Europe/Stockholm',
+  NO: 'Europe/Oslo', NORWAY: 'Europe/Oslo',
+  DK: 'Europe/Copenhagen', DENMARK: 'Europe/Copenhagen',
+  FI: 'Europe/Helsinki', FINLAND: 'Europe/Helsinki',
+  IS: 'Atlantic/Reykjavik', ICELAND: 'Atlantic/Reykjavik',
+  EE: 'Europe/Tallinn', ESTONIA: 'Europe/Tallinn',
+  LV: 'Europe/Riga', LATVIA: 'Europe/Riga',
+  LT: 'Europe/Vilnius', LITHUANIA: 'Europe/Vilnius',
+  UA: 'Europe/Kyiv', UKRAINE: 'Europe/Kyiv',
+  RU: 'Europe/Moscow', RUSSIA: 'Europe/Moscow',
+  TR: 'Europe/Istanbul', TURKEY: 'Europe/Istanbul',
+  HR: 'Europe/Zagreb', CROATIA: 'Europe/Zagreb',
+  SI: 'Europe/Ljubljana', SLOVENIA: 'Europe/Ljubljana',
+  RS: 'Europe/Belgrade', SERBIA: 'Europe/Belgrade',
+  // APAC
+  JP: 'Asia/Tokyo', JAPAN: 'Asia/Tokyo',
+  CN: 'Asia/Shanghai', CHINA: 'Asia/Shanghai',
+  HK: 'Asia/Hong_Kong', 'HONG KONG': 'Asia/Hong_Kong',
+  TW: 'Asia/Taipei', TAIWAN: 'Asia/Taipei',
+  KR: 'Asia/Seoul', 'SOUTH KOREA': 'Asia/Seoul',
+  SG: 'Asia/Singapore', SINGAPORE: 'Asia/Singapore',
+  MY: 'Asia/Kuala_Lumpur', MALAYSIA: 'Asia/Kuala_Lumpur',
+  TH: 'Asia/Bangkok', THAILAND: 'Asia/Bangkok',
+  VN: 'Asia/Ho_Chi_Minh', VIETNAM: 'Asia/Ho_Chi_Minh',
+  PH: 'Asia/Manila', PHILIPPINES: 'Asia/Manila',
+  ID: 'Asia/Jakarta', INDONESIA: 'Asia/Jakarta',
+  IN: 'Asia/Kolkata', INDIA: 'Asia/Kolkata',
+  PK: 'Asia/Karachi', PAKISTAN: 'Asia/Karachi',
+  AU: 'Australia/Sydney', AUSTRALIA: 'Australia/Sydney',
+  NZ: 'Pacific/Auckland', 'NEW ZEALAND': 'Pacific/Auckland',
+  // Middle East
+  IL: 'Asia/Jerusalem', ISRAEL: 'Asia/Jerusalem',
+  AE: 'Asia/Dubai', UAE: 'Asia/Dubai', 'UNITED ARAB EMIRATES': 'Asia/Dubai',
+  SA: 'Asia/Riyadh', 'SAUDI ARABIA': 'Asia/Riyadh',
+  QA: 'Asia/Qatar', QATAR: 'Asia/Qatar',
+  // South America
+  BR: 'America/Sao_Paulo', BRAZIL: 'America/Sao_Paulo',
+  AR: 'America/Argentina/Buenos_Aires', ARGENTINA: 'America/Argentina/Buenos_Aires',
+  CL: 'America/Santiago', CHILE: 'America/Santiago',
+  CO: 'America/Bogota', COLOMBIA: 'America/Bogota',
+  PE: 'America/Lima', PERU: 'America/Lima',
+  // Africa
+  ZA: 'Africa/Johannesburg', 'SOUTH AFRICA': 'Africa/Johannesburg',
+  EG: 'Africa/Cairo', EGYPT: 'Africa/Cairo',
+  NG: 'Africa/Lagos', NIGERIA: 'Africa/Lagos',
+  KE: 'Africa/Nairobi', KENYA: 'Africa/Nairobi',
+}
+
+// Match common ", XX" or ", XX 12345" US-state suffixes inside hq_location strings.
+const US_STATE_RE = /,\s*([A-Z]{2})(?:\s+\d{5}|\s*$|,)/
+
+function deriveTimezone(country?: string | null, hqLocation?: string | null): string {
+  // 1) US: prefer state-level zone if hq_location contains a state code.
+  const c = (country || '').trim().toUpperCase()
+  if (c === 'US' || c === 'USA' || c === 'UNITED STATES') {
+    const m = hqLocation && hqLocation.toUpperCase().match(US_STATE_RE)
+    if (m && US_STATE_TZ[m[1]]) return US_STATE_TZ[m[1]]
+    return 'America/New_York' // fallback to ET
+  }
+  // 2) Country lookup by code or name (case-insensitive).
+  if (c && COUNTRY_TZ[c]) return COUNTRY_TZ[c]
+  // 3) Last resort: try to find any US state code in hq_location even when
+  //    country is missing (Webflow form skipped country).
+  if (hqLocation) {
+    const m = hqLocation.toUpperCase().match(US_STATE_RE)
+    if (m && US_STATE_TZ[m[1]]) return US_STATE_TZ[m[1]]
+  }
+  return ''
+}
+
 const TIME_FILTERS = [
   { value: '7', label: '7D' },
   { value: '14', label: '14D' },
@@ -277,6 +395,9 @@ export default function DashboardPage() {
       'UTM Medium',
       'UTM Campaign',
       'Country',
+      'Phone',
+      'HQ Location',
+      'Timezone',
       'In Salesforce',
       'Has AI Research',
       'Company Overview',
@@ -343,6 +464,9 @@ export default function DashboardPage() {
         esc(context?.utm_medium),
         esc(lead.utm_campaign || context?.utm_campaign),
         esc(context?.country),
+        esc(lead.phone),
+        esc(lead.hq_location),
+        esc(deriveTimezone(context?.country, lead.hq_location)),
         esc(lead.in_salesforce ? 'Yes' : 'No'),
         esc(lead.has_research ? 'Yes' : 'No'),
         esc(company?.overview),
